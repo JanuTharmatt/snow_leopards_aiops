@@ -15,5 +15,3 @@ services:
         value: "0"
       - key: JWT_SECRET_KEY
         generateValue: true
-      - key: FIREBASE_CONFIG_PATH
-        sync: false

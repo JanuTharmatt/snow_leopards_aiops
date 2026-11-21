@@ -74,7 +74,7 @@ class TenantService:
         self._seed_default_tenants()
 
     def _init_tables(self) -> None:
-        """Creates tenants, users, and collectors tables."""
+        """Creates tenants, users, and collectors tables with schema evolution."""
         with storage_service._get_connection() as conn:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS tenants (
@@ -90,6 +90,7 @@ class TenantService:
                     email TEXT NOT NULL UNIQUE,
                     password_hash TEXT NOT NULL,
                     tenant_id TEXT NOT NULL,
+                    role TEXT DEFAULT 'admin',
                     created_at TEXT NOT NULL
                 );
             """)
@@ -98,10 +99,33 @@ class TenantService:
                     collector_id TEXT PRIMARY KEY,
                     tenant_id TEXT NOT NULL,
                     hostname TEXT NOT NULL,
+                    device_name TEXT,
+                    status TEXT DEFAULT 'ONLINE',
+                    last_seen TEXT,
+                    version TEXT DEFAULT '1.0',
                     registered_at TEXT NOT NULL,
                     collector_secret TEXT NOT NULL
                 );
             """)
+
+            # Schema migration check
+            try:
+                c_cols = [r["name"] for r in conn.execute("PRAGMA table_info(collectors)").fetchall()]
+                if "device_name" not in c_cols:
+                    conn.execute("ALTER TABLE collectors ADD COLUMN device_name TEXT")
+                if "status" not in c_cols:
+                    conn.execute("ALTER TABLE collectors ADD COLUMN status TEXT DEFAULT 'ONLINE'")
+                if "last_seen" not in c_cols:
+                    conn.execute("ALTER TABLE collectors ADD COLUMN last_seen TEXT")
+                if "version" not in c_cols:
+                    conn.execute("ALTER TABLE collectors ADD COLUMN version TEXT DEFAULT '1.0'")
+
+                u_cols = [r["name"] for r in conn.execute("PRAGMA table_info(users)").fetchall()]
+                if "role" not in u_cols:
+                    conn.execute("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'admin'")
+            except Exception:
+                pass
+
             conn.commit()
 
     def _seed_default_tenants(self) -> None:
@@ -312,7 +336,9 @@ class TenantService:
         tenant_id: Optional[str] = None,
         email: Optional[str] = None,
         password: Optional[str] = None,
-        org_name: Optional[str] = None
+        org_name: Optional[str] = None,
+        device_name: Optional[str] = None,
+        version: Optional[str] = "1.0"
     ) -> Dict[str, Any]:
         """
         Registers a new collector machine.
@@ -338,11 +364,16 @@ class TenantService:
         collector_secret = f"SECRET-{uuid.uuid4().hex[:12].upper()}"
         now_iso = datetime.now(timezone.utc).isoformat()
         clean_host = hostname.strip() if hostname else "windows-client"
+        dev_name = (device_name.strip() if device_name else None) or clean_host
+        ver = version or "1.0"
 
         with storage_service._get_connection() as conn:
             conn.execute(
-                "INSERT INTO collectors (collector_id, tenant_id, hostname, registered_at, collector_secret) VALUES (?, ?, ?, ?, ?)",
-                (collector_id, tenant_id, clean_host, now_iso, collector_secret)
+                """
+                INSERT INTO collectors (collector_id, tenant_id, hostname, device_name, status, last_seen, version, registered_at, collector_secret)
+                VALUES (?, ?, ?, ?, 'ONLINE', ?, ?, ?, ?)
+                """,
+                (collector_id, tenant_id, clean_host, dev_name, now_iso, ver, now_iso, collector_secret)
             )
             conn.commit()
 
@@ -367,7 +398,7 @@ class TenantService:
                 tenant_id=tenant_id,
                 region="us-east-1",
                 public_key="PK-AUTO",
-                os_info=f"{clean_host} (Windows)"
+                os_info=f"{dev_name} ({clean_host})"
             )
         except Exception:
             pass
@@ -378,6 +409,8 @@ class TenantService:
             "collector_registration_token": collector_secret,
             "tenant_id": tenant_id,
             "hostname": clean_host,
+            "device_name": dev_name,
+            "version": ver,
             "registered_at": now_iso,
             "jwt": token_data["access_token"],
             "access_token": token_data["access_token"],
@@ -385,6 +418,65 @@ class TenantService:
             "expires_in": token_data["expires_in"],
             "status": "registered"
         }
+
+    def get_collectors_for_tenant(self, tenant_id: str) -> List[Dict[str, Any]]:
+        """Returns all collectors registered under this tenant with latest metrics and health."""
+        with storage_service._get_connection() as conn:
+            cur = conn.execute(
+                """
+                SELECT c.collector_id, c.tenant_id, c.hostname,
+                       COALESCE(c.device_name, c.hostname) as device_name,
+                       COALESCE(c.status, 'ONLINE') as status,
+                       c.last_seen,
+                       COALESCE(c.version, '1.0') as version,
+                       c.registered_at
+                FROM collectors c
+                WHERE c.tenant_id = ?
+                ORDER BY c.registered_at ASC
+                """,
+                (tenant_id,)
+            )
+            collectors = [dict(r) for r in cur.fetchall()]
+
+            # Enrich with latest telemetry and health
+            for c in collectors:
+                cid = c["collector_id"]
+                t_cur = conn.execute(
+                    """
+                    SELECT cpu, memory, latency, timestamp
+                    FROM telemetry
+                    WHERE tenant_id = ? AND collector_id = ?
+                    ORDER BY timestamp DESC
+                    LIMIT 1
+                    """,
+                    (tenant_id, cid)
+                )
+                t_row = t_cur.fetchone()
+                if t_row:
+                    c["cpu"] = round(float(t_row["cpu"]), 1)
+                    c["memory"] = round(float(t_row["memory"]), 1)
+                    c["latency"] = round(float(t_row["latency"]), 1)
+                    if not c.get("last_seen"):
+                        c["last_seen"] = t_row["timestamp"]
+                else:
+                    c["cpu"] = None
+                    c["memory"] = None
+                    c["latency"] = None
+
+                # Compute health: Healthy, Fair, Poor
+                is_online = c.get("status") == "ONLINE"
+                cpu = c.get("cpu") or 0.0
+                mem = c.get("memory") or 0.0
+                lat = c.get("latency") or 0.0
+
+                if not is_online or c["cpu"] is None or cpu >= 85 or mem >= 85 or lat >= 150:
+                    c["health"] = "Poor"
+                elif cpu >= 70 or mem >= 70 or lat >= 70:
+                    c["health"] = "Fair"
+                else:
+                    c["health"] = "Healthy"
+
+            return collectors
 
     def get_tenant(self, tenant_id: str) -> Optional[Dict[str, Any]]:
         """Retrieves tenant record by ID."""

@@ -58,6 +58,8 @@ class LoginTenantRequest(BaseModel):
 
 class RegisterCollectorRequest(BaseModel):
     hostname: Optional[str] = Field(default="windows-client", description="Collector machine hostname")
+    device_name: Optional[str] = Field(default=None, description="Human friendly device label (e.g. Laptop A, Finance-PC)")
+    version: Optional[str] = Field(default="1.0", description="Collector software version")
     tenant_id: Optional[str] = Field(default=None, description="Optional target tenant_id")
     tenant_name: Optional[str] = Field(default=None, description="Organization name (auto-provisions if new)")
     email: Optional[str] = Field(default=None, description="User email for automatic organization link")
@@ -133,7 +135,9 @@ def register_collector_endpoint(request: RegisterCollectorRequest):
             tenant_id=request.tenant_id,
             email=request.email,
             password=request.password,
-            org_name=request.tenant_name
+            org_name=request.tenant_name,
+            device_name=request.device_name,
+            version=request.version or "1.0"
         )
     except Exception as exc:
         raise HTTPException(

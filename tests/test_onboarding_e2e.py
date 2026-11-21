@@ -29,7 +29,10 @@ from saas_service.services.tenant_service import tenant_service
 from saas_service.services.storage import storage_service
 from saas_service.services.auth import auth_service
 from saas_service.routes.auth import register_new_tenant, login_tenant_user, register_collector_endpoint, RegisterTenantRequest, LoginTenantRequest, RegisterCollectorRequest
-from saas_service.routes.dashboard import get_dashboard_overview, check_tenant_access, download_collector_binary
+from saas_service.routes.dashboard import (
+    get_dashboard_overview, check_tenant_access, download_collector_binary,
+    get_fleet_overview, get_fleet_collectors, get_fleet_collector_detail
+)
 from saas_service.routes.demo_lab import generate_demo_incident, IncidentGenerateRequest
 
 
@@ -198,6 +201,145 @@ class TestOnboardingAndMultiTenantIsolation(unittest.TestCase):
             self.assertIn("collector.exe", res.headers.get("location", ""))
         else:
             self.fail(f"Unexpected response type from download endpoint: {type(res)}")
+
+    def test_07_multi_collector_fleet_monitoring(self):
+        """
+        Step 7: Enterprise Fleet Monitoring (Multi-Collector per Tenant Architecture).
+        Verifies:
+        1. Multiple collectors (Laptop A, Laptop B, Laptop C, Server D) provision under one Tenant.
+        2. Telemetry ingested independently for each collector.
+        3. Fleet overview aggregates Company name, online/offline count, and fleet health.
+        4. Collector grid displays individual device status, CPU %, RAM %, Latency, and Health grading.
+        5. Collector detail endpoint provides historical trends and incident/threat isolation.
+        """
+        import json
+        fleet_email = f"admin_fleet_{uuid.uuid4().hex[:6]}@abccompany.com"
+        fleet_pwd = "CompanySecure2026!"
+        fleet_org = "ABC Company"
+
+        # 1. Provision organization tenant
+        reg = register_new_tenant(RegisterTenantRequest(
+            email=fleet_email,
+            password=fleet_pwd,
+            tenant_name=fleet_org
+        ))
+        tenant_id = reg["tenant_id"]
+        token = reg["jwt"]
+
+        # 2. Register Collector A (Laptop A)
+        col_a = register_collector_endpoint(RegisterCollectorRequest(
+            hostname="LAPTOP-A",
+            device_name="Laptop A",
+            tenant_id=tenant_id,
+            email=fleet_email,
+            password=fleet_pwd
+        ))
+        cid_a = col_a["collector_id"]
+
+        # 3. Register Collector B (Laptop B)
+        col_b = register_collector_endpoint(RegisterCollectorRequest(
+            hostname="LAPTOP-B",
+            device_name="Laptop B",
+            tenant_id=tenant_id,
+            email=fleet_email,
+            password=fleet_pwd
+        ))
+        cid_b = col_b["collector_id"]
+
+        # 4. Register Collector C (Laptop C)
+        col_c = register_collector_endpoint(RegisterCollectorRequest(
+            hostname="LAPTOP-C",
+            device_name="Laptop C",
+            tenant_id=tenant_id,
+            email=fleet_email,
+            password=fleet_pwd
+        ))
+        cid_c = col_c["collector_id"]
+
+        # Ingest telemetry for Laptop A (Healthy: CPU 40%, RAM 60%, Latency 22ms)
+        now_a = datetime.now(timezone.utc).isoformat()
+        storage_service.store_payload(
+            payload_dict={
+                "payload_id": f"pay_{uuid.uuid4().hex[:8]}",
+                "collector_id": cid_a,
+                "event_time_utc": now_a,
+                "data_type": "system_metrics",
+                "cpu": 40.0,
+                "memory": 60.0,
+                "latency": 22.0
+            },
+            tenant_id=tenant_id,
+            region="us-east-1"
+        )
+
+        # Ingest telemetry for Laptop B (Fair: CPU 80%, RAM 70%, Latency 45ms)
+        now_b = datetime.now(timezone.utc).isoformat()
+        storage_service.store_payload(
+            payload_dict={
+                "payload_id": f"pay_{uuid.uuid4().hex[:8]}",
+                "collector_id": cid_b,
+                "event_time_utc": now_b,
+                "data_type": "system_metrics",
+                "cpu": 80.0,
+                "memory": 70.0,
+                "latency": 45.0
+            },
+            tenant_id=tenant_id,
+            region="us-east-1"
+        )
+
+        # Ingest telemetry for Laptop C (Healthy: CPU 30%, RAM 50%, Latency 15ms)
+        now_c = datetime.now(timezone.utc).isoformat()
+        storage_service.store_payload(
+            payload_dict={
+                "payload_id": f"pay_{uuid.uuid4().hex[:8]}",
+                "collector_id": cid_c,
+                "event_time_utc": now_c,
+                "data_type": "system_metrics",
+                "cpu": 30.0,
+                "memory": 50.0,
+                "latency": 15.0
+            },
+            tenant_id=tenant_id,
+            region="us-east-1"
+        )
+
+        # 5. Query Fleet Overview
+        overview = get_fleet_overview(tenant_id=tenant_id, authorization=f"Bearer {token}")
+        self.assertEqual(overview["tenant_id"], tenant_id)
+        self.assertEqual(overview["tenant_name"], "ABC Company")
+        # 1 default node created during tenant registration + 3 collectors = 4 collectors
+        self.assertGreaterEqual(overview["total_collectors"], 3)
+        self.assertGreaterEqual(overview["online_count"], 3)
+        self.assertIn(overview["fleet_health"], ["Healthy", "Degraded"])
+
+        # 6. Query Fleet Collectors List
+        collectors = get_fleet_collectors(tenant_id=tenant_id, authorization=f"Bearer {token}")
+        c_map = {c["collector_id"]: c for c in collectors}
+        self.assertIn(cid_a, c_map)
+        self.assertIn(cid_b, c_map)
+        self.assertIn(cid_c, c_map)
+
+        self.assertEqual(c_map[cid_a]["device_name"], "Laptop A")
+        self.assertEqual(c_map[cid_a]["cpu"], 40.0)
+        self.assertEqual(c_map[cid_a]["memory"], 60.0)
+        self.assertEqual(c_map[cid_a]["health"], "Healthy")
+
+        self.assertEqual(c_map[cid_b]["device_name"], "Laptop B")
+        self.assertEqual(c_map[cid_b]["cpu"], 80.0)
+        self.assertEqual(c_map[cid_b]["health"], "Fair")
+
+        self.assertEqual(c_map[cid_c]["device_name"], "Laptop C")
+        self.assertEqual(c_map[cid_c]["cpu"], 30.0)
+        self.assertEqual(c_map[cid_c]["health"], "Healthy")
+
+        # 7. Query Collector Detail Drilldown for Laptop B
+        detail_b = get_fleet_collector_detail(collector_id=cid_b, tenant_id=tenant_id, authorization=f"Bearer {token}")
+        self.assertEqual(detail_b["collector"]["collector_id"], cid_b)
+        self.assertEqual(detail_b["collector"]["device_name"], "Laptop B")
+        self.assertEqual(detail_b["collector"]["latest_cpu"], 80.0)
+        self.assertEqual(detail_b["collector"]["latest_memory"], 70.0)
+        self.assertGreaterEqual(len(detail_b["telemetry"]), 1)
 
 
 if __name__ == "__main__":

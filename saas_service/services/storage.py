@@ -108,6 +108,23 @@ class SaaSStorageService:
                 );
             """)
 
+            # 3b. Dedicated Telemetry Table for Multi-Collector Historical Querying
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS telemetry (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    tenant_id TEXT NOT NULL,
+                    collector_id TEXT NOT NULL,
+                    cpu REAL NOT NULL,
+                    memory REAL NOT NULL,
+                    latency REAL NOT NULL DEFAULT 0.0,
+                    timestamp TEXT NOT NULL
+                );
+            """)
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_telemetry_tenant_coll 
+                ON telemetry(tenant_id, collector_id, timestamp);
+            """)
+
             # 4. Contextual & Outage Alerts Table (Tasks E & F)
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS alerts (
@@ -267,6 +284,53 @@ class SaaSStorageService:
                 """,
                 (pid, collector_id, tenant_id, region, event_time_utc, source_tz, sha256_hash, data_type, payload_json, 1 if is_out_of_order else 0, now_utc)
             )
+
+            # Ingest into dedicated telemetry table and update collectors table
+            try:
+                p_data = json.loads(payload_json)
+                cpu_val = 0.0
+                mem_val = 0.0
+                lat_val = 0.0
+                if isinstance(p_data, dict):
+                    metrics = p_data.get("metrics")
+                    data_block = p_data.get("data")
+                    if isinstance(metrics, dict):
+                        cpu_val = float(metrics.get("cpu_percent") or metrics.get("cpu") or 0.0)
+                        mem_val = float(metrics.get("memory_percent") or metrics.get("memory") or 0.0)
+                        lat_val = float(metrics.get("network_latency_ms") or metrics.get("latency_ms") or metrics.get("latency") or 0.0)
+                    elif isinstance(metrics, list) and len(metrics) > 0 and isinstance(metrics[0], dict):
+                        cpu_val = float(metrics[0].get("cpu_percent") or metrics[0].get("cpu") or 0.0)
+                        mem_val = float(metrics[0].get("memory_percent") or metrics[0].get("memory") or 0.0)
+                        lat_val = float(metrics[0].get("network_latency_ms") or metrics[0].get("latency_ms") or metrics[0].get("latency") or 0.0)
+                    elif isinstance(data_block, dict):
+                        cpu_val = float(data_block.get("cpu") or data_block.get("cpu_percent") or 0.0)
+                        mem_val = float(data_block.get("memory") or data_block.get("memory_percent") or 0.0)
+                        lat_val = float(data_block.get("latency") or data_block.get("network_latency_ms") or 0.0)
+                    else:
+                        cpu_val = float(p_data.get("cpu") or p_data.get("cpu_percent") or 0.0)
+                        mem_val = float(p_data.get("memory") or p_data.get("memory_percent") or 0.0)
+                        lat_val = float(p_data.get("latency") or p_data.get("network_latency_ms") or 0.0)
+
+                conn.execute(
+                    """
+                    INSERT INTO telemetry (tenant_id, collector_id, cpu, memory, latency, timestamp)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    (tenant_id, collector_id, cpu_val, mem_val, lat_val, event_time_utc)
+                )
+
+                # Keep collectors table updated with latest status and timestamp
+                conn.execute(
+                    """
+                    UPDATE collectors
+                    SET status = 'ONLINE', last_seen = ?
+                    WHERE collector_id = ?
+                    """,
+                    (event_time_utc, collector_id)
+                )
+            except Exception:
+                pass
+
             conn.commit()
 
         return True, is_out_of_order
@@ -299,6 +363,131 @@ class SaaSStorageService:
             cursor = conn.execute(query, params)
             rows = cursor.fetchall()
             return [dict(r) for r in rows]
+
+    def get_collector_telemetry(
+        self,
+        tenant_id: str,
+        collector_id: str,
+        limit: int = 50
+    ) -> List[Dict[str, Any]]:
+        """Retrieves raw historical telemetry points for a specific collector in chronological order."""
+        with self._get_connection() as conn:
+            cur = conn.execute(
+                """
+                SELECT id, tenant_id, collector_id, cpu, memory, latency, timestamp
+                FROM telemetry
+                WHERE tenant_id = ? AND collector_id = ?
+                ORDER BY timestamp ASC
+                LIMIT ?
+                """,
+                (tenant_id, collector_id, limit)
+            )
+            rows = cur.fetchall()
+            return [dict(r) for r in rows]
+
+    def get_collector_drilldown(
+        self,
+        tenant_id: str,
+        collector_id: str
+    ) -> Dict[str, Any]:
+        """Returns deep telemetry, threats, incidents, and performance trends for a single collector."""
+        with self._get_connection() as conn:
+            # Metadata
+            c_cur = conn.execute(
+                """
+                SELECT collector_id, tenant_id, hostname,
+                       COALESCE(device_name, hostname) as device_name,
+                       COALESCE(status, 'ONLINE') as status,
+                       last_seen,
+                       COALESCE(version, '1.0') as version,
+                       registered_at
+                FROM collectors
+                WHERE tenant_id = ? AND collector_id = ?
+                """,
+                (tenant_id, collector_id)
+            )
+            c_meta = c_cur.fetchone()
+            meta = dict(c_meta) if c_meta else {
+                "collector_id": collector_id,
+                "tenant_id": tenant_id,
+                "hostname": "unknown",
+                "device_name": collector_id,
+                "status": "OFFLINE",
+                "last_seen": None,
+                "version": "1.0",
+                "registered_at": None
+            }
+
+            # Telemetry points (latest 50)
+            t_cur = conn.execute(
+                """
+                SELECT cpu, memory, latency, timestamp
+                FROM telemetry
+                WHERE tenant_id = ? AND collector_id = ?
+                ORDER BY timestamp DESC
+                LIMIT 50
+                """,
+                (tenant_id, collector_id)
+            )
+            telemetry_pts = [dict(r) for r in t_cur.fetchall()]
+            telemetry_pts.reverse()  # chronological order
+
+            # Threats
+            th_cur = conn.execute(
+                """
+                SELECT threat_id, threat_type, threat_level, status, vector_description, classification, first_seen, last_seen
+                FROM threat_events
+                WHERE tenant_id = ? AND collector_id = ?
+                ORDER BY last_seen DESC
+                LIMIT 10
+                """,
+                (tenant_id, collector_id)
+            )
+            threats = [dict(r) for r in th_cur.fetchall()]
+
+            # Incidents
+            inc_cur = conn.execute(
+                """
+                SELECT incident_id, incident_type, severity, status, root_cause, confidence_score, summary, created_at
+                FROM incidents
+                WHERE tenant_id = ? AND collector_id = ?
+                ORDER BY created_at DESC
+                LIMIT 10
+                """,
+                (tenant_id, collector_id)
+            )
+            incidents = [dict(r) for r in inc_cur.fetchall()]
+
+            # Latest metrics
+            latest_cpu = telemetry_pts[-1]["cpu"] if telemetry_pts else 0.0
+            latest_mem = telemetry_pts[-1]["memory"] if telemetry_pts else 0.0
+            latest_lat = telemetry_pts[-1]["latency"] if telemetry_pts else 0.0
+            packet_loss = 0.0
+            if latest_lat > 200:
+                packet_loss = 5.0
+            elif latest_lat > 100:
+                packet_loss = 2.0
+
+            # Health classification
+            if meta.get("status") == "OFFLINE" or latest_cpu >= 85 or latest_mem >= 85 or latest_lat >= 150 or threats:
+                health = "Poor"
+            elif latest_cpu >= 70 or latest_mem >= 70 or latest_lat >= 70:
+                health = "Fair"
+            else:
+                health = "Healthy"
+
+            meta["health"] = health
+            meta["latest_cpu"] = latest_cpu
+            meta["latest_memory"] = latest_mem
+            meta["latest_latency"] = latest_lat
+            meta["packet_loss"] = packet_loss
+
+            return {
+                "collector": meta,
+                "telemetry": telemetry_pts,
+                "threats": threats,
+                "incidents": incidents
+            }
 
     def update_collector_heartbeat(
         self,

@@ -891,6 +891,10 @@
       <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
       <span class="nav-tooltip">Overview</span>
     </div>
+    <div class="nav-item" onclick="setNav(this, 'fleet')" title="">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+      <span class="nav-tooltip">Fleet Monitoring</span>
+    </div>
     <div class="nav-item" onclick="setNav(this, 'weekly')" title="">
       <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
       <span class="nav-tooltip">Weekly Report</span>
@@ -1082,6 +1086,10 @@
     <button class="tab-pill active" id="tabbtn-overview" onclick="switchDashboardTab('overview')">
       <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
       Overview
+    </button>
+    <button class="tab-pill" id="tabbtn-fleet" onclick="switchDashboardTab('fleet')">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+      Fleet Monitoring
     </button>
     <button class="tab-pill" id="tabbtn-weekly" onclick="switchDashboardTab('weekly')">
       <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
@@ -1792,6 +1800,92 @@
     </div>
   </div>
 
+  <!-- ══════════════════════════════════════════
+       VIEW: FLEET MONITORING (Enterprise Multi-Collector)
+       ══════════════════════════════════════════ -->
+  <div id="view-fleet" class="tab-view">
+    <!-- Fleet Overview Top Summary Card -->
+    <div class="glass-card-static" style="padding:22px 26px;margin-bottom:18px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:18px;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="width:42px;height:42px;border-radius:12px;background:rgba(99,102,241,0.12);display:flex;align-items:center;justify-content:center;font-size:22px;">💻</div>
+          <div>
+            <div style="font-size:17px;font-weight:800;color:var(--text-primary);" id="fleetTenantTitle">Enterprise Fleet Monitoring</div>
+            <div style="font-size:12px;color:var(--text-secondary);">One Tenant → Multiple Collectors → Unified Telemetry Stream</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <button class="cta-btn" onclick="loadFleetData()" style="padding:7px 14px;font-size:12px;">🔄 Refresh Fleet</button>
+        </div>
+      </div>
+
+      <!-- KPI Grid -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:14px;">
+        <!-- Organization / Company -->
+        <div class="glass-card" style="padding:16px;border-radius:16px;">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-muted);letter-spacing:0.5px;">Organization</div>
+          <div style="font-size:20px;font-weight:800;color:var(--text-primary);margin-top:4px;" id="fleetOrgName">—</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px;" id="fleetTenantIdLabel">Tenant ID: —</div>
+        </div>
+
+        <!-- Collectors Online -->
+        <div class="glass-card" style="padding:16px;border-radius:16px;">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#16A34A;letter-spacing:0.5px;">Collectors Online</div>
+          <div style="font-size:26px;font-weight:800;color:#16A34A;margin-top:4px;" id="fleetOnlineCount">0</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px;" id="fleetTotalCountLabel">Total Registered: 0</div>
+        </div>
+
+        <!-- Collectors Offline -->
+        <div class="glass-card" style="padding:16px;border-radius:16px;">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#DC2626;letter-spacing:0.5px;">Collectors Offline</div>
+          <div style="font-size:26px;font-weight:800;color:#DC2626;margin-top:4px;" id="fleetOfflineCount">0</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Stale or unlinked nodes</div>
+        </div>
+
+        <!-- Fleet Health -->
+        <div class="glass-card" style="padding:16px;border-radius:16px;">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-muted);letter-spacing:0.5px;">Fleet Health</div>
+          <div style="margin-top:6px;">
+            <span id="fleetHealthBadge" class="delta-pill green" style="font-size:14px;padding:4px 12px;font-weight:800;">Healthy</span>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:6px;" id="fleetHealthSubtext">All nodes operating normally</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Collector Grid Table -->
+    <div class="glass-card-static" style="padding:22px 26px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div style="font-size:15px;font-weight:700;color:var(--text-primary);">Registered Collector Fleet</div>
+        <div style="font-size:12px;color:var(--text-muted);">Real-time Telemetry, Resource Utilization &amp; Health per Machine</div>
+      </div>
+
+      <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:12.5px;text-align:left;">
+          <thead>
+            <tr style="border-bottom:1.5px solid rgba(220,225,245,0.8);color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:0.5px;">
+              <th style="padding:10px 14px;">Collector</th>
+              <th style="padding:10px 14px;">Hostname</th>
+              <th style="padding:10px 14px;">Status</th>
+              <th style="padding:10px 14px;">CPU</th>
+              <th style="padding:10px 14px;">RAM</th>
+              <th style="padding:10px 14px;">Latency</th>
+              <th style="padding:10px 14px;">Version</th>
+              <th style="padding:10px 14px;">Last Seen</th>
+              <th style="padding:10px 14px;">Health</th>
+              <th style="padding:10px 14px;text-align:right;">Action</th>
+            </tr>
+          </thead>
+          <tbody id="fleetTableBody">
+            <tr>
+              <td colspan="10" style="text-align:center;padding:30px;color:var(--text-muted);">Loading fleet collectors…</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
 </main>
 
 <!-- ═══════════════════════ JSON MODAL ═══════════════════════ -->
@@ -1821,6 +1915,17 @@
     <div id="threatList" style="display:flex;flex-direction:column;gap:8px;max-height:300px;overflow-y:auto;"></div>
     <div style="margin-top:16px;">
       <canvas id="radarChart" height="160"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ COLLECTOR DETAIL MODAL ═══════════════════════ -->
+<div class="modal-overlay" id="collectorDetailModal" onclick="closeModal(event)">
+  <div class="modal-box" style="position:relative;max-width:780px;" onclick="event.stopPropagation()">
+    <div class="modal-title" id="collectorModalTitle">💻 Collector Detail</div>
+    <button class="modal-close" onclick="document.getElementById('collectorDetailModal').classList.remove('open')">✕</button>
+    <div id="collectorModalContent" style="margin-top:14px;">
+      <div style="text-align:center;padding:30px;color:var(--text-muted);">Loading collector telemetry…</div>
     </div>
   </div>
 </div>
@@ -1959,6 +2064,8 @@ function switchDashboardTab(tabName) {
     if (inp) inp.focus();
   } else if (tabName === 'demolab') {
     // Demo Lab view
+  } else if (tabName === 'fleet') {
+    loadFleetData();
   }
 }
 
@@ -1966,7 +2073,7 @@ function setNav(el, section) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   el.classList.add('active');
 
-  if (['overview', 'weekly', 'monthly', 'forecast', 'risk', 'remediation', 'copilot', 'demolab'].includes(section)) {
+  if (['overview', 'weekly', 'monthly', 'forecast', 'risk', 'remediation', 'copilot', 'demolab', 'fleet'].includes(section)) {
     switchDashboardTab(section);
   } else if (section === 'egress') {
     switchDashboardTab('overview');
@@ -1975,6 +2082,218 @@ function setNav(el, section) {
     window.location.href = '/collector-dashboard';
   } else if (section === 'audit') {
     exportAuditLog();
+  }
+}
+
+// ── Enterprise Fleet Monitoring ──
+async function loadFleetData() {
+  try {
+    const ov = await apiFetch(`/api/v1/fleet/overview?tenant_id=${currentTenant}`);
+    if (ov) {
+      document.getElementById('fleetOrgName').textContent = ov.tenant_name || currentTenant;
+      document.getElementById('fleetTenantIdLabel').textContent = `Tenant ID: ${ov.tenant_id}`;
+      document.getElementById('fleetOnlineCount').textContent = ov.online_count || 0;
+      document.getElementById('fleetTotalCountLabel').textContent = `Total Registered: ${ov.total_collectors || 0}`;
+      document.getElementById('fleetOfflineCount').textContent = ov.offline_count || 0;
+
+      const healthBadge = document.getElementById('fleetHealthBadge');
+      const healthSub = document.getElementById('fleetHealthSubtext');
+      const health = ov.fleet_health || 'Healthy';
+      healthBadge.textContent = health;
+
+      if (health === 'Healthy' || health === 'GOOD') {
+        healthBadge.className = 'delta-pill green';
+        healthSub.textContent = 'All nodes operating within normal baselines';
+      } else if (health === 'Degraded') {
+        healthBadge.className = 'delta-pill yellow';
+        healthSub.textContent = '20-40% of nodes reporting elevated contention or offline';
+      } else {
+        healthBadge.className = 'delta-pill red';
+        healthSub.textContent = 'Critical contention or majority of fleet offline';
+      }
+    }
+
+    const collectors = await apiFetch(`/api/v1/fleet/collectors?tenant_id=${currentTenant}`);
+    renderFleetTable(collectors || []);
+  } catch (err) {
+    console.error('Failed to load fleet data:', err);
+  }
+}
+
+function renderFleetTable(collectors) {
+  const tbody = document.getElementById('fleetTableBody');
+  if (!tbody) return;
+
+  if (!collectors || collectors.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="10" style="text-align:center;padding:36px;color:var(--text-muted);">
+          No collectors registered yet for this tenant.<br>
+          <a href="/api/v1/download/collector" class="cta-btn" style="display:inline-flex;margin-top:12px;padding:6px 14px;font-size:12px;text-decoration:none;">
+            📥 Download collector.exe
+          </a>
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = collectors.map(c => {
+    const isOnline = c.status === 'ONLINE';
+    const statusPill = isOnline 
+      ? '<span class="delta-pill green" style="font-size:11px;padding:2px 8px;">● Online</span>'
+      : '<span class="delta-pill red" style="font-size:11px;padding:2px 8px;">○ Offline</span>';
+
+    const healthColor = c.health === 'Healthy' ? 'green' : (c.health === 'Fair' ? 'yellow' : 'red');
+    const healthPill = `<span class="delta-pill ${healthColor}" style="font-size:11px;padding:2px 8px;">${c.health}</span>`;
+
+    const cpuStr = c.cpu !== null && c.cpu !== undefined ? `${c.cpu}%` : '--';
+    const memStr = c.memory !== null && c.memory !== undefined ? `${c.memory}%` : '--';
+    const latStr = c.latency !== null && c.latency !== undefined ? `${c.latency} ms` : '--';
+    const lastSeenStr = c.last_seen ? new Date(c.last_seen).toLocaleTimeString() : 'Never';
+
+    return `
+      <tr style="border-bottom:1px solid rgba(220,225,245,0.6);transition:background 0.2s;" onmouseover="this.style.background='rgba(99,102,241,0.03)'" onmouseout="this.style.background='transparent'">
+        <td style="padding:12px 14px;font-weight:700;color:var(--text-primary);">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span>💻</span>
+            <div>
+              <div>${escapeHtml(c.device_name || c.hostname)}</div>
+              <div style="font-size:10px;font-weight:500;color:var(--text-muted);">${escapeHtml(c.collector_id)}</div>
+            </div>
+          </div>
+        </td>
+        <td style="padding:12px 14px;color:var(--text-secondary);font-family:monospace;">${escapeHtml(c.hostname)}</td>
+        <td style="padding:12px 14px;">${statusPill}</td>
+        <td style="padding:12px 14px;font-weight:700;color:${c.cpu >= 80 ? '#DC2626' : 'var(--text-primary)'};">${cpuStr}</td>
+        <td style="padding:12px 14px;font-weight:700;color:${c.memory >= 80 ? '#DC2626' : 'var(--text-primary)'};">${memStr}</td>
+        <td style="padding:12px 14px;color:var(--text-secondary);">${latStr}</td>
+        <td style="padding:12px 14px;color:var(--text-muted);font-size:11.5px;">v${escapeHtml(c.version || '1.0')}</td>
+        <td style="padding:12px 14px;color:var(--text-muted);font-size:11.5px;">${lastSeenStr}</td>
+        <td style="padding:12px 14px;">${healthPill}</td>
+        <td style="padding:12px 14px;text-align:right;">
+          <button class="cta-btn" onclick="showCollectorDetail('${c.collector_id}')" style="padding:4px 10px;font-size:11.5px;">
+            View Details
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+async function showCollectorDetail(collectorId) {
+  const modal = document.getElementById('collectorDetailModal');
+  const title = document.getElementById('collectorModalTitle');
+  const content = document.getElementById('collectorModalContent');
+  if (!modal || !content) return;
+
+  modal.classList.add('open');
+  title.textContent = `💻 Collector Detail: ${collectorId}`;
+  content.innerHTML = `<div style="text-align:center;padding:30px;color:var(--text-muted);">Fetching metrics & telemetry trends…</div>`;
+
+  try {
+    const res = await apiFetch(`/api/v1/fleet/collector/${collectorId}?tenant_id=${currentTenant}`);
+    if (!res || !res.collector) {
+      content.innerHTML = `<div style="color:#DC2626;padding:20px;">Could not load collector data.</div>`;
+      return;
+    }
+
+    const c = res.collector;
+    const telemetry = res.telemetry || [];
+    const threats = res.threats || [];
+    const incidents = res.incidents || [];
+
+    // Build CPU & Memory Trend visual mini bars
+    const recentPts = telemetry.slice(-15);
+    const cpuBars = recentPts.map(pt => {
+      const h = Math.min(Math.max(pt.cpu, 4), 100);
+      const col = pt.cpu >= 80 ? '#DC2626' : (pt.cpu >= 60 ? '#F59E0B' : '#6366F1');
+      return `<div style="flex:1;height:${h}%;background:${col};border-radius:2px;" title="${pt.timestamp}: CPU ${pt.cpu}%"></div>`;
+    }).join('');
+
+    const memBars = recentPts.map(pt => {
+      const h = Math.min(Math.max(pt.memory, 4), 100);
+      const col = pt.memory >= 80 ? '#DC2626' : (pt.memory >= 60 ? '#F59E0B' : '#10B981');
+      return `<div style="flex:1;height:${h}%;background:${col};border-radius:2px;" title="${pt.timestamp}: RAM ${pt.memory}%"></div>`;
+    }).join('');
+
+    content.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(160px, 1fr));gap:12px;margin-bottom:16px;">
+        <div style="padding:12px;background:rgba(99,102,241,0.06);border-radius:12px;border:1px solid rgba(99,102,241,0.12);">
+          <div style="font-size:10.5px;font-weight:700;color:var(--text-muted);text-transform:uppercase;">Device Name</div>
+          <div style="font-size:15px;font-weight:800;color:var(--text-primary);margin-top:2px;">${escapeHtml(c.device_name || c.hostname)}</div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">${escapeHtml(c.hostname)}</div>
+        </div>
+        <div style="padding:12px;background:rgba(99,102,241,0.06);border-radius:12px;border:1px solid rgba(99,102,241,0.12);">
+          <div style="font-size:10.5px;font-weight:700;color:var(--text-muted);text-transform:uppercase;">Health & Status</div>
+          <div style="display:flex;gap:6px;margin-top:4px;">
+            <span class="delta-pill ${c.status === 'ONLINE' ? 'green' : 'red'}" style="font-size:11px;padding:2px 6px;">${c.status}</span>
+            <span class="delta-pill ${c.health === 'Healthy' ? 'green' : (c.health === 'Fair' ? 'yellow' : 'red')}" style="font-size:11px;padding:2px 6px;">${c.health}</span>
+          </div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:4px;">Version: v${escapeHtml(c.version || '1.0')}</div>
+        </div>
+        <div style="padding:12px;background:rgba(99,102,241,0.06);border-radius:12px;border:1px solid rgba(99,102,241,0.12);">
+          <div style="font-size:10.5px;font-weight:700;color:var(--text-muted);text-transform:uppercase;">Latency & Loss</div>
+          <div style="font-size:16px;font-weight:800;color:var(--text-primary);margin-top:2px;">${c.latest_latency} ms</div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">Packet Loss: ${c.packet_loss}%</div>
+        </div>
+        <div style="padding:12px;background:rgba(99,102,241,0.06);border-radius:12px;border:1px solid rgba(99,102,241,0.12);">
+          <div style="font-size:10.5px;font-weight:700;color:var(--text-muted);text-transform:uppercase;">Last Seen</div>
+          <div style="font-size:13px;font-weight:700;color:var(--text-primary);margin-top:2px;">${c.last_seen ? new Date(c.last_seen).toLocaleTimeString() : 'Never'}</div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">${c.last_seen ? new Date(c.last_seen).toLocaleDateString() : ''}</div>
+        </div>
+      </div>
+
+      <!-- Trend Charts -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+        <div style="background:rgba(255,255,255,0.7);padding:14px;border-radius:12px;border:1px solid rgba(220,225,245,0.8);">
+          <div style="font-size:12px;font-weight:700;color:var(--text-primary);margin-bottom:8px;display:flex;justify-content:space-between;">
+            <span>CPU Trend</span>
+            <span style="color:#6366F1;">${c.latest_cpu}%</span>
+          </div>
+          <div style="height:60px;display:flex;align-items:flex-end;gap:3px;background:rgba(238,242,255,0.5);border-radius:6px;padding:4px;">
+            ${cpuBars || '<div style="color:var(--text-muted);font-size:11px;margin:auto;">No telemetry series yet</div>'}
+          </div>
+        </div>
+        <div style="background:rgba(255,255,255,0.7);padding:14px;border-radius:12px;border:1px solid rgba(220,225,245,0.8);">
+          <div style="font-size:12px;font-weight:700;color:var(--text-primary);margin-bottom:8px;display:flex;justify-content:space-between;">
+            <span>Memory Trend</span>
+            <span style="color:#10B981;">${c.latest_memory}%</span>
+          </div>
+          <div style="height:60px;display:flex;align-items:flex-end;gap:3px;background:rgba(238,242,255,0.5);border-radius:6px;padding:4px;">
+            ${memBars || '<div style="color:var(--text-muted);font-size:11px;margin:auto;">No telemetry series yet</div>'}
+          </div>
+        </div>
+      </div>
+
+      <!-- Threats & Incidents -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div style="background:rgba(255,255,255,0.7);padding:14px;border-radius:12px;border:1px solid rgba(220,225,245,0.8);">
+          <div style="font-size:12px;font-weight:700;color:var(--text-primary);margin-bottom:8px;">Active Cyber Threats (${threats.length})</div>
+          <div style="max-height:110px;overflow-y:auto;font-size:11.5px;color:var(--text-secondary);">
+            ${threats.length === 0 ? '<div style="color:var(--text-muted);padding:8px 0;">🛡️ No active threats detected on this node.</div>' : threats.map(t => `
+              <div style="padding:4px 0;border-bottom:1px solid rgba(0,0,0,0.05);display:flex;justify-content:space-between;">
+                <span>${escapeHtml(t.threat_type)}</span>
+                <span style="color:#DC2626;font-weight:700;">${t.threat_level}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+        <div style="background:rgba(255,255,255,0.7);padding:14px;border-radius:12px;border:1px solid rgba(220,225,245,0.8);">
+          <div style="font-size:12px;font-weight:700;color:var(--text-primary);margin-bottom:8px;">Recent Incidents & RCA (${incidents.length})</div>
+          <div style="max-height:110px;overflow-y:auto;font-size:11.5px;color:var(--text-secondary);">
+            ${incidents.length === 0 ? '<div style="color:var(--text-muted);padding:8px 0;">✓ No active incidents logged for this node.</div>' : incidents.map(i => `
+              <div style="padding:4px 0;border-bottom:1px solid rgba(0,0,0,0.05);">
+                <div style="font-weight:600;color:var(--text-primary);">${escapeHtml(i.incident_type)} (${i.severity})</div>
+                <div style="font-size:10.5px;color:var(--text-muted);">Root Cause: ${escapeHtml(i.root_cause)}</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+    `;
+  } catch (err) {
+    content.innerHTML = `<div style="color:#DC2626;padding:20px;">Failed to load detail: ${escapeHtml(err.message)}</div>`;
   }
 }
 

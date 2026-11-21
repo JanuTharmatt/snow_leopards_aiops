@@ -80,7 +80,9 @@ def register_collector_api(
     org_name: str,
     email: str,
     password: str,
-    hostname: Optional[str] = None
+    hostname: Optional[str] = None,
+    device_name: Optional[str] = None,
+    version: Optional[str] = "1.0"
 ) -> Dict[str, Any]:
     """
     Submits collector registration request to SaaS backend.
@@ -91,6 +93,8 @@ def register_collector_api(
 
     payload = {
         "hostname": host,
+        "device_name": device_name or host,
+        "version": version or "1.0",
         "tenant_name": org_name,
         "email": email,
         "password": password

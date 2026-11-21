@@ -22,10 +22,12 @@ try:
     from ..services.storage import storage_service
     from ..services.watchdog import watchdog
     from ..services.auth import auth_service
+    from ..services.tenant_service import tenant_service
 except (ImportError, ValueError):
     from saas_service.services.storage import storage_service
     from saas_service.services.watchdog import watchdog
     from saas_service.services.auth import auth_service
+    from saas_service.services.tenant_service import tenant_service
 
 router = APIRouter(tags=["Dashboard"])
 
@@ -573,5 +575,109 @@ def get_condition_comparison(
             "confidence": 98.4
         }
     }
+
+
+# ==============================================================================
+# ENTERPRISE FLEET MONITORING (MULTI-COLLECTOR PER TENANT)
+# ==============================================================================
+
+@router.get("/api/v1/fleet/overview")
+def get_fleet_overview(
+    tenant_id: Optional[str] = Query(None),
+    authorization: Optional[str] = Header(None),
+    x_tenant_id: Optional[str] = Header(None)
+):
+    """
+    Fleet Overview endpoint:
+    Returns Company/Tenant Name, Online/Offline count, Fleet Health (Healthy/Degraded/Critical),
+    and average CPU, Memory, Latency across all collectors under this tenant.
+    """
+    tenant_id = check_tenant_access(tenant_id, authorization, x_tenant_id) or "TENANT-001"
+    watchdog.check_fleet_freshness()
+
+    tenant_record = tenant_service.get_tenant(tenant_id)
+    tenant_name = tenant_record["tenant_name"] if tenant_record else f"Organization ({tenant_id})"
+
+    collectors = tenant_service.get_collectors_for_tenant(tenant_id)
+    total_collectors = len(collectors)
+
+    online_collectors = [c for c in collectors if c.get("status") == "ONLINE"]
+    offline_collectors = [c for c in collectors if c.get("status") != "ONLINE"]
+
+    healthy_count = sum(1 for c in collectors if c.get("health") == "Healthy")
+    fair_count = sum(1 for c in collectors if c.get("health") == "Fair")
+    poor_count = sum(1 for c in collectors if c.get("health") == "Poor")
+
+    # Fleet Health Logic according to specification:
+    # Healthy if: Most collectors healthy (<= 25% poor/failing)
+    # Degraded if: 25-50% collectors unhealthy
+    # Critical if: Majority (> 50%) unhealthy
+    if total_collectors == 0:
+        fleet_health = "Healthy"
+    else:
+        poor_ratio = poor_count / float(total_collectors)
+        if poor_ratio > 0.50:
+            fleet_health = "Critical"
+        elif poor_ratio > 0.25:
+            fleet_health = "Degraded"
+        else:
+            fleet_health = "Healthy"
+
+    # Averages across online nodes with telemetry
+    active_cpu = [c["cpu"] for c in online_collectors if c.get("cpu") is not None]
+    active_mem = [c["memory"] for c in online_collectors if c.get("memory") is not None]
+    active_lat = [c["latency"] for c in online_collectors if c.get("latency") is not None]
+
+    avg_cpu = round(sum(active_cpu) / len(active_cpu), 1) if active_cpu else 0.0
+    avg_mem = round(sum(active_mem) / len(active_mem), 1) if active_mem else 0.0
+    avg_lat = round(sum(active_lat) / len(active_lat), 1) if active_lat else 0.0
+
+    return {
+        "tenant_id": tenant_id,
+        "tenant_name": tenant_name,
+        "total_collectors": total_collectors,
+        "online_count": len(online_collectors),
+        "offline_count": len(offline_collectors),
+        "fleet_health": fleet_health,
+        "health_breakdown": {
+            "healthy": healthy_count,
+            "fair": fair_count,
+            "poor": poor_count
+        },
+        "avg_cpu": avg_cpu,
+        "avg_memory": avg_mem,
+        "avg_latency": avg_lat
+    }
+
+
+@router.get("/api/v1/fleet/collectors")
+def get_fleet_collectors(
+    tenant_id: Optional[str] = Query(None),
+    authorization: Optional[str] = Header(None),
+    x_tenant_id: Optional[str] = Header(None)
+):
+    """
+    Collector Grid endpoint:
+    Returns list of all collectors registered under this tenant with:
+    Collector/Device Name, Hostname, Status, CPU %, RAM %, Latency, Version, Last Seen, Health.
+    """
+    tenant_id = check_tenant_access(tenant_id, authorization, x_tenant_id) or "TENANT-001"
+    watchdog.check_fleet_freshness()
+    return tenant_service.get_collectors_for_tenant(tenant_id)
+
+
+@router.get("/api/v1/fleet/collector/{collector_id}")
+def get_fleet_collector_detail(
+    collector_id: str,
+    tenant_id: Optional[str] = Query(None),
+    authorization: Optional[str] = Header(None),
+    x_tenant_id: Optional[str] = Header(None)
+):
+    """
+    Collector Detail View endpoint:
+    Returns CPU Trend, Memory Trend, Active Threats, Incidents, Latency, Packet Loss, and Last Seen.
+    """
+    tenant_id = check_tenant_access(tenant_id, authorization, x_tenant_id) or "TENANT-001"
+    return storage_service.get_collector_drilldown(tenant_id, collector_id)
 
 
