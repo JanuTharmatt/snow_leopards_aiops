@@ -25,13 +25,12 @@ COLLECTOR_DIR = ROOT_DIR / "collector"
 
 # Collect CustomTkinter assets (themes, fonts, shapes)
 datas = collect_data_files('customtkinter')
+datas += collect_data_files('PIL')
 datas += [
     (str(COLLECTOR_DIR / 'ui'), 'ui'),
     (str(COLLECTOR_DIR / 'ui'), 'collector/ui'),
+    (str(COLLECTOR_DIR), 'collector'),
 ]
-# Only bundle collector Python source files (explicitly avoids copying collector/venv)
-for py_file in COLLECTOR_DIR.glob('*.py'):
-    datas.append((str(py_file), 'collector'))
 
 # Hidden imports required by dynamic GUI modules & background daemon
 hiddenimports = [
@@ -52,13 +51,21 @@ hiddenimports = [
     'collector.models',
     'collector.security_pipeline',
     'collector.metadata_engine',
+    'collector.ui',
+    'collector.ui.app',
+    'collector.ui.service_controller',
+    'collector.ui.state_manager',
+    'collector.ui.autostart',
+    'collector.ui.tray',
     'customtkinter',
     'pystray',
+    'pystray._win32',
     'PIL',
     'PIL.Image',
     'PIL.ImageDraw',
     'PIL._tkinter_finder',
     'darkdetect',
+    'six',
     'psutil',
     'ping3',
     'requests',
@@ -82,6 +89,7 @@ hiddenimports += collect_submodules('customtkinter')
 hiddenimports += collect_submodules('pystray')
 hiddenimports += collect_submodules('PIL')
 hiddenimports += collect_submodules('collector')
+hiddenimports += collect_submodules('ui')
 
 entrypoint = str(ROOT_DIR / 'run_ui.py')
 

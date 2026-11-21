@@ -6,16 +6,30 @@ Ensures that when the UI window is closed, the application minimizes to tray
 and the Collector Service remains fully active.
 """
 
+import logging
 import threading
 from typing import Callable, Optional
-from PIL import Image, ImageDraw
+
+logger = logging.getLogger("AIOps.Tray")
+
+PIL_AVAILABLE = False
+try:
+    from PIL import Image, ImageDraw
+    PIL_AVAILABLE = True
+except (ImportError, ModuleNotFoundError) as err:
+    logger.warning("PIL not available in runtime environment: %s", err)
+    Image = None
+    ImageDraw = None
 
 
-def create_tray_icon_image(size: int = 64) -> Image.Image:
+def create_tray_icon_image(size: int = 64):
     """
     Dynamically generates an icon using PIL.
     Renders an emerald green & deep navy privacy shield.
     """
+    if not PIL_AVAILABLE or Image is None or ImageDraw is None:
+        return None
+
     image = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     draw = ImageDraw.Draw(image)
 

@@ -120,13 +120,16 @@ def main():
 
     # Normal execution: Launch Desktop GUI Control Center
     try:
-        from ui.app import launch_app
+        from collector.ui.app import launch_app
     except (ImportError, ModuleNotFoundError):
         try:
-            from collector.ui.app import launch_app
+            from ui.app import launch_app
         except (ImportError, ModuleNotFoundError):
-            import ui.app as app_mod
-            launch_app = app_mod.launch_app
+            try:
+                from app import launch_app
+            except (ImportError, ModuleNotFoundError):
+                import ui.app as app_mod
+                launch_app = app_mod.launch_app
 
     launch_app(start_minimized=args.minimized)
 
