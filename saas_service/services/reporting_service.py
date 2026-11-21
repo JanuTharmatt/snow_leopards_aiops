@@ -142,6 +142,7 @@ class ReportingService:
                 INSERT OR REPLACE INTO weekly_reports (report_id, tenant_id, generated_at, report_type, report_json)
                 VALUES (?, ?, ?, ?, ?);
             """, (report_id, tenant_id, now_utc, "WEEKLY", json.dumps(report_data)))
+            conn.commit()
 
         return {
             "tenant_id": tenant_id,
@@ -232,6 +233,7 @@ class ReportingService:
                 INSERT OR REPLACE INTO monthly_reports (report_id, tenant_id, generated_at, report_type, report_json)
                 VALUES (?, ?, ?, ?, ?);
             """, (report_id, tenant_id, now_utc, "MONTHLY", json.dumps(report_data)))
+            conn.commit()
 
         return {
             "tenant_id": tenant_id,

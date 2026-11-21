@@ -97,6 +97,7 @@ class PolicyEngine:
                 INSERT INTO policy_audit (id, tenant_id, remediation_id, action, policy_result, risk_score, timestamp)
                 VALUES (?, ?, ?, ?, ?, ?, ?);
             """, (audit_id, tenant_id, remediation_id, action, policy_result, score, now_utc))
+            conn.commit()
 
         return {
             "audit_id": audit_id,

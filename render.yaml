@@ -5,10 +5,12 @@ services:
     region: oregon
     plan: free
     buildCommand: pip install -r saas_service/requirements.txt
-    startCommand: uvicorn saas_service.main:app --host 0.0.0.0 --port 10000
+    startCommand: uvicorn saas_service.main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
-        value: 3.11.0
+        value: 3.11.9
+      - key: PYTHONPATH
+        value: .
       - key: AIOPS_SSL_ENABLED
         value: "0"
       - key: JWT_SECRET_KEY

@@ -82,6 +82,7 @@ class RemediationEngine:
                 INSERT INTO remediation_queue (id, tenant_id, incident_id, root_cause, suggested_action, status, created_at)
                 VALUES (?, ?, ?, ?, ?, 'PENDING', ?);
             """, (rem_id, tenant_id, incident_id or "INC-MANUAL", root_cause, suggested_action, now_utc))
+            conn.commit()
 
         return {
             "id": rem_id,
@@ -134,6 +135,7 @@ class RemediationEngine:
                     INSERT INTO remediation_queue (id, tenant_id, incident_id, root_cause, suggested_action, status, created_at)
                     VALUES (?, 'TENANT-001', 'INC-SIM', 'MEMORY_LEAK_WORKER_POOL', 'Restart Worker Pool', 'APPROVED', ?);
                 """, (remediation_id, now_utc))
+                conn.commit()
                 item = {
                     "id": remediation_id,
                     "tenant_id": "TENANT-001",
@@ -143,6 +145,7 @@ class RemediationEngine:
                 }
             else:
                 conn.execute("UPDATE remediation_queue SET status = 'APPROVED' WHERE id = ?", (remediation_id,))
+                conn.commit()
                 item = dict(row)
                 item["status"] = "APPROVED"
 
@@ -165,8 +168,10 @@ class RemediationEngine:
                     INSERT INTO remediation_queue (id, tenant_id, incident_id, root_cause, suggested_action, status, created_at)
                     VALUES (?, 'TENANT-001', 'INC-SIM', 'STORAGE_IO_CONTENTION', 'Expand Storage', 'REJECTED', ?);
                 """, (remediation_id, now_utc))
+                conn.commit()
             else:
                 conn.execute("UPDATE remediation_queue SET status = 'REJECTED' WHERE id = ?", (remediation_id,))
+                conn.commit()
 
         return {
             "id": remediation_id,
