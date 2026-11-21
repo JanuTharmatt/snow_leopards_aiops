@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Register Organization — SNOW LEOPARDS Autonomous AIOps</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: radial-gradient(circle at 10% 20%, rgba(127, 95, 227, 0.12) 0%, transparent 40%),
+                  radial-gradient(circle at 90% 80%, rgba(6, 182, 212, 0.10) 0%, transparent 40%),
+                  linear-gradient(135deg, #f8f9fe 0%, #edf0fa 50%, #e7ecf8 100%);
+      min-height: 100vh;
+    }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    .card-pop {
+      background: #ffffff;
+      border: 1px solid rgba(220, 225, 245, 0.9);
+      box-shadow: 0 20px 40px -15px rgba(107, 85, 163, 0.12), 0 0 0 1px rgba(255, 255, 255, 0.8) inset;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .btn-pop {
+      background: linear-gradient(135deg, #7f5fe3 0%, #6366f1 100%);
+      box-shadow: 0 10px 20px -5px rgba(127, 95, 227, 0.38);
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .btn-pop:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 16px 28px -6px rgba(127, 95, 227, 0.52);
+    }
+    .input-pop {
+      transition: all 0.2s ease;
+      border: 1.5px solid #e2e8f8;
+      background: #fbfbfe;
+    }
+    .input-pop:focus {
+      outline: none;
+      border-color: #7f5fe3;
+      background: #ffffff;
+      box-shadow: 0 0 0 4px rgba(127, 95, 227, 0.12);
+      transform: translateY(-1px);
+    }
+  </style>
+</head>
+<body class="flex items-center justify-center p-6 text-slate-800">
+
+  <div class="w-full max-w-md">
+    
+    <!-- Official Logo -->
+    <div class="text-center mb-6">
+      <div class="inline-block p-2 bg-white rounded-3xl shadow-xl shadow-indigo-500/10 border border-slate-100 transform hover:scale-105 transition-transform duration-300">
+        <img src="/static/images/snow_leopard_logo.jpg" alt="SNOW LEOPARDS" class="h-28 w-auto mx-auto object-contain rounded-2xl">
+      </div>
+    </div>
+
+    <!-- Main Card -->
+    <div class="card-pop rounded-3xl p-8">
+      
+      <div class="flex items-center justify-between pb-5 mb-5 border-b border-slate-100">
+        <div>
+          <h2 class="text-base font-bold text-slate-900">Create Tenant Account</h2>
+          <p class="text-xs text-slate-500">Autonomous AIOps & Fleet Isolation</p>
+        </div>
+        <span class="inline-flex items-center gap-1.5 text-[11px] mono font-semibold bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-full border border-indigo-200">
+          Multi-Tenant
+        </span>
+      </div>
+
+      <div id="regError" class="hidden text-xs text-rose-600 bg-rose-50 p-3 rounded-xl border border-rose-200 font-semibold mb-4 text-center"></div>
+      <div id="regSuccess" class="hidden text-xs text-emerald-700 bg-emerald-50 p-3 rounded-xl border border-emerald-200 font-semibold mb-4 text-center"></div>
+
+      <form id="registerForm" onsubmit="handleRegister(event)" class="space-y-4">
+        
+        <!-- Organization / Tenant Name -->
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Organization / Team Name</label>
+          <input type="text" id="tenantName" required
+                 class="input-pop w-full text-xs font-medium text-slate-800 rounded-xl px-3.5 py-3 focus:outline-none"
+                 placeholder="e.g. Judge Evaluation Team, Acme Corp">
+        </div>
+
+        <!-- User Email -->
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Work / Judge Email</label>
+          <input type="email" id="userEmail" required
+                 class="input-pop w-full text-xs font-medium text-slate-800 rounded-xl px-3.5 py-3 focus:outline-none mono"
+                 placeholder="name@domain.com">
+        </div>
+
+        <!-- Password -->
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Password (Min 6 chars)</label>
+          <input type="password" id="userPassword" required minlength="6"
+                 class="input-pop w-full text-xs font-medium text-slate-800 rounded-xl px-3.5 py-3 focus:outline-none mono"
+                 placeholder="Create secure password">
+        </div>
+
+        <!-- Primary Submit Button -->
+        <div class="pt-2">
+          <button type="submit" id="submitBtn" class="btn-pop w-full text-white font-bold text-xs uppercase tracking-wider py-3.5 rounded-xl flex items-center justify-center gap-2">
+            <span>Register & Provision Tenant</span>
+            <span>→</span>
+          </button>
+        </div>
+
+      </form>
+
+      <!-- Already registered? -->
+      <div class="mt-6 pt-5 border-t border-slate-100 text-center">
+        <p class="text-xs text-slate-500 font-medium">
+          Already have an account? 
+          <a href="/login" class="text-indigo-600 font-bold hover:underline ml-1">Sign In to Console</a>
+        </p>
+      </div>
+
+    </div>
+
+    <!-- Security Badges -->
+    <div class="mt-6 flex flex-wrap items-center justify-center gap-2 text-[11px] mono text-slate-500">
+      <span class="bg-white/70 px-2.5 py-1 rounded-full border border-slate-200">Zero-Trust Tenant Isolation</span>
+      <span>•</span>
+      <span class="bg-white/70 px-2.5 py-1 rounded-full border border-slate-200">Cloud Firestore Ready</span>
+    </div>
+
+  </div>
+
+  <script>
+    async function handleRegister(e) {
+      e.preventDefault();
+      const name = document.getElementById('tenantName').value.trim();
+      const email = document.getElementById('userEmail').value.trim();
+      const password = document.getElementById('userPassword').value;
+      const errorEl = document.getElementById('regError');
+      const successEl = document.getElementById('regSuccess');
+      const btn = document.getElementById('submitBtn');
+
+      errorEl.classList.add('hidden');
+      successEl.classList.add('hidden');
+      btn.disabled = true;
+      btn.innerText = "Provisioning Tenant...";
+
+      try {
+        const resp = await fetch('/api/v1/auth/register-tenant', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tenant_name: name,
+            email: email,
+            password: password
+          })
+        });
+
+        const data = await resp.json();
+        if (!resp.ok) {
+          throw new Error(data.detail || 'Registration failed. Please check inputs.');
+        }
+
+        successEl.innerHTML = `<strong>Tenant Provisioned:</strong> <code>${data.tenant_id}</code><br>Logging into console...`;
+        successEl.classList.remove('hidden');
+
+        // Store session tokens
+        sessionStorage.setItem('sl_token', data.access_token);
+        sessionStorage.setItem('sl_tenant', data.tenant_id);
+        sessionStorage.setItem('sl_collector', data.collector_id);
+        localStorage.setItem('sl_token', data.access_token);
+        localStorage.setItem('sl_tenant', data.tenant_id);
+        localStorage.setItem('sl_collector', data.collector_id);
+
+        setTimeout(() => {
+          window.location.href = `/dashboard?tenant_id=${encodeURIComponent(data.tenant_id)}&collector_id=${encodeURIComponent(data.collector_id)}`;
+        }, 1200);
+
+      } catch (err) {
+        errorEl.textContent = err.message;
+        errorEl.classList.remove('hidden');
+        btn.disabled = false;
+        btn.innerHTML = `<span>Register & Provision Tenant</span><span>→</span>`;
+      }
+    }
+  </script>
+</body>
+</html>

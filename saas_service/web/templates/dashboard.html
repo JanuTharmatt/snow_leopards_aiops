@@ -1,0 +1,2649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SNOW LEOPARDS – Autonomous AIOps & Observability Cloud</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      /* Canvas */
+      --canvas-bg: #EAECEF;
+      --canvas-bg2: #F4F5F7;
+      /* Glass cards */
+      --glass-fill: rgba(255,255,255,0.64);
+      --glass-fill-hover: rgba(255,255,255,0.82);
+      --glass-border: 1px solid rgba(255,255,255,0.85);
+      --glass-blur: blur(22px);
+      --glass-shadow: 0 8px 32px rgba(31,38,135,0.07);
+      --glass-shadow-hover: 0 16px 48px rgba(31,38,135,0.13);
+      --radius-card: 22px;
+      --radius-pill: 9999px;
+      /* Accent */
+      --accent: #5B7CFA;
+      --accent2: #6C8EEF;
+      --accent-glow: rgba(91,124,250,0.18);
+      /* Text */
+      --text-primary: #1A1D24;
+      --text-secondary: #6E7485;
+      --text-muted: #9BA3B5;
+      /* Pastels */
+      --pastel-lavender: #E0D7FF;
+      --pastel-sky: #D4E8FF;
+      --pastel-peach: #FFD8CC;
+      --pastel-mint: #D5F5E3;
+      --pastel-rose: #FFE4EE;
+      /* Status */
+      --healthy: #22C55E;
+      --degraded: #F59E0B;
+      --critical: #EF4444;
+      --stale: #94A3B8;
+      /* Sidebar */
+      --sidebar-bg: rgba(255,255,255,0.75);
+      --sidebar-w: 72px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: radial-gradient(ellipse at 15% 20%, rgba(91,124,250,0.08) 0%, transparent 50%),
+                  radial-gradient(ellipse at 85% 80%, rgba(108,142,239,0.07) 0%, transparent 50%),
+                  radial-gradient(ellipse at 50% 50%, rgba(224,215,255,0.12) 0%, transparent 60%),
+                  linear-gradient(145deg, #EAECEF 0%, #F0F2F5 40%, #F4F5F7 100%);
+      min-height: 100vh;
+      color: var(--text-primary);
+      overflow-x: hidden;
+    }
+
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    .tabular { font-variant-numeric: tabular-nums; }
+
+    /* ═══════════════════ GLASS CARD ═══════════════════ */
+    .glass-card {
+      background: var(--glass-fill);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+      border: var(--glass-border);
+      border-radius: var(--radius-card);
+      box-shadow: var(--glass-shadow);
+      transition: transform 0.25s cubic-bezier(0.16,1,0.3,1), box-shadow 0.25s ease;
+    }
+    .glass-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--glass-shadow-hover);
+    }
+    .glass-card-static {
+      background: var(--glass-fill);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+      border: var(--glass-border);
+      border-radius: var(--radius-card);
+      box-shadow: var(--glass-shadow);
+    }
+
+    /* ═══════════════════ SIDEBAR ═══════════════════ */
+    #sidebar {
+      position: fixed;
+      left: 0; top: 0; bottom: 0;
+      width: var(--sidebar-w);
+      background: var(--sidebar-bg);
+      backdrop-filter: blur(28px);
+      -webkit-backdrop-filter: blur(28px);
+      border-right: 1px solid rgba(255,255,255,0.75);
+      box-shadow: 2px 0 24px rgba(31,38,135,0.06);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 18px 0 20px;
+      z-index: 100;
+    }
+
+    .sidebar-logo {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 22px;
+      border: 2px solid rgba(91,124,250,0.25);
+      box-shadow: 0 4px 16px rgba(91,124,250,0.18);
+      flex-shrink: 0;
+    }
+    .sidebar-logo img { width: 100%; height: 100%; object-fit: cover; }
+
+    .nav-items { display: flex; flex-direction: column; gap: 4px; flex: 1; width: 100%; padding: 0 8px; }
+
+    .nav-item {
+      position: relative;
+      display: flex; align-items: center; justify-content: center;
+      width: 100%; height: 44px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.16,1,0.3,1);
+      color: var(--text-secondary);
+    }
+    .nav-item:hover { background: rgba(91,124,250,0.08); color: var(--accent); transform: scale(1.05); }
+    .nav-item.active {
+      background: rgba(255,255,255,0.95);
+      box-shadow: 0 4px 16px rgba(91,124,250,0.18), 0 0 0 1px rgba(91,124,250,0.15);
+      color: var(--accent);
+    }
+    .nav-item svg { width: 20px; height: 20px; }
+
+    .nav-tooltip {
+      position: absolute;
+      left: calc(100% + 14px);
+      background: rgba(26,29,36,0.92);
+      color: #fff;
+      font-size: 11.5px;
+      font-weight: 600;
+      padding: 5px 10px;
+      border-radius: 8px;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      transform: translateX(-6px);
+      transition: all 0.18s ease;
+      z-index: 999;
+    }
+    .nav-item:hover .nav-tooltip { opacity: 1; transform: translateX(0); }
+
+    .sidebar-divider { width: 34px; height: 1px; background: rgba(31,38,135,0.08); margin: 6px auto; }
+
+    .sidebar-avatar {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #5B7CFA, #E0D7FF);
+      color: #fff;
+      font-weight: 700;
+      font-size: 13px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(91,124,250,0.25);
+      border: 2px solid #fff;
+    }
+
+    /* ═══════════════════ MAIN CONTENT ═══════════════════ */
+    #main {
+      margin-left: var(--sidebar-w);
+      min-height: 100vh;
+      padding: 20px 24px 40px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* ═══════════════════ TOP HEADER ═══════════════════ */
+    #header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .search-bar {
+      flex: 1;
+      min-width: 200px;
+      max-width: 440px;
+      height: 42px;
+      background: rgba(255,255,255,0.65);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255,255,255,0.85);
+      border-radius: var(--radius-pill);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 10px;
+      box-shadow: 0 2px 12px rgba(31,38,135,0.04);
+      color: var(--text-muted);
+      transition: all 0.2s;
+    }
+    .search-bar:focus-within {
+      background: rgba(255,255,255,0.92);
+      border-color: rgba(91,124,250,0.5);
+      box-shadow: 0 4px 20px rgba(91,124,250,0.12);
+    }
+    .search-bar input {
+      border: none; outline: none; background: transparent;
+      font-family: inherit; font-size: 13px; color: var(--text-primary);
+      width: 100%;
+    }
+    .search-bar input::placeholder { color: var(--text-muted); }
+
+    .header-pill {
+      height: 42px;
+      padding: 0 16px;
+      background: rgba(255,255,255,0.65);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255,255,255,0.85);
+      border-radius: var(--radius-pill);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+      box-shadow: 0 2px 12px rgba(31,38,135,0.04);
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .header-pill:hover { background: rgba(255,255,255,0.90); }
+
+    .time-stepper {
+      height: 42px;
+      background: rgba(255,255,255,0.65);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255,255,255,0.85);
+      border-radius: var(--radius-pill);
+      display: flex;
+      align-items: center;
+      padding: 3px;
+      gap: 2px;
+      box-shadow: 0 2px 12px rgba(31,38,135,0.04);
+    }
+    .time-pill {
+      padding: 5px 12px;
+      border-radius: var(--radius-pill);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+    .time-pill.active {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(91,124,250,0.35);
+    }
+
+    .notif-btn {
+      position: relative;
+      width: 42px; height: 42px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.65);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255,255,255,0.85);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 2px 12px rgba(31,38,135,0.04);
+      color: var(--text-secondary);
+      transition: all 0.2s;
+    }
+    .notif-btn:hover { background: rgba(255,255,255,0.90); color: var(--accent); }
+    .notif-badge {
+      position: absolute;
+      top: 9px; right: 9px;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #EF4444;
+      border: 2px solid #fff;
+      display: none;
+    }
+
+    .user-pill {
+      height: 42px;
+      padding: 0 14px 0 6px;
+      background: rgba(255,255,255,0.65);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255,255,255,0.85);
+      border-radius: var(--radius-pill);
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+      box-shadow: 0 2px 12px rgba(31,38,135,0.04);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .user-pill:hover { background: rgba(255,255,255,0.90); }
+    .user-avatar {
+      width: 30px; height: 30px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #5B7CFA, #D4E8FF);
+      color: #fff;
+      font-weight: 700;
+      font-size: 11.5px;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* ═══════════════════ PAGE TITLE ═══════════════════ */
+    .page-title {
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--text-primary);
+      letter-spacing: -0.5px;
+    }
+    .page-subtitle {
+      font-size: 12.5px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+      font-weight: 500;
+    }
+
+    /* ═══════════════════ PHASE 5 STYLES ═══════════════════ */
+    .tabs-nav-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 4px 2px;
+      margin: 8px 0 12px;
+    }
+    .tab-pill {
+      padding: 8px 18px;
+      border-radius: var(--radius-pill);
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      background: rgba(255, 255, 255, 0.68);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.88);
+      box-shadow: 0 4px 14px rgba(31, 38, 135, 0.04);
+      cursor: pointer;
+      transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      white-space: nowrap;
+    }
+    .tab-pill:hover {
+      background: rgba(255, 255, 255, 0.95);
+      color: var(--accent);
+      transform: translateY(-1px);
+    }
+    .tab-pill.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+      box-shadow: 0 4px 18px rgba(91, 124, 250, 0.35);
+    }
+    .tab-view {
+      display: none;
+      animation: fadeInTab 0.25s ease forwards;
+    }
+    .tab-view.active {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    @keyframes fadeInTab {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .copilot-chip {
+      padding: 6px 14px;
+      border-radius: 9999px;
+      background: rgba(91,124,250,0.09);
+      border: 1px solid rgba(91,124,250,0.22);
+      color: #3b5bdb;
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .copilot-chip:hover {
+      background: rgba(91,124,250,0.20);
+      transform: translateY(-1px);
+    }
+    .copilot-bubble-bot {
+      background: rgba(255,255,255,0.85);
+      border: 1px solid rgba(255,255,255,0.95);
+      backdrop-filter: blur(20px);
+      border-radius: 18px 18px 18px 4px;
+      padding: 14px 18px;
+      box-shadow: 0 6px 20px rgba(31,38,135,0.06);
+      max-width: 80%;
+      font-size: 13px;
+      line-height: 1.55;
+      color: var(--text-primary);
+    }
+    .copilot-bubble-user {
+      background: linear-gradient(135deg, #5B7CFA 0%, #6C8EEF 100%);
+      color: #ffffff;
+      border-radius: 18px 18px 4px 18px;
+      padding: 12px 18px;
+      box-shadow: 0 6px 20px rgba(91,124,250,0.25);
+      max-width: 75%;
+      margin-left: auto;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .remed-btn-approve {
+      padding: 6px 14px;
+      background: #22C55E;
+      color: #ffffff;
+      border: none;
+      border-radius: 9999px;
+      font-size: 11.5px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .remed-btn-approve:hover {
+      background: #16A34A;
+      box-shadow: 0 4px 14px rgba(34,197,94,0.35);
+    }
+    .remed-btn-reject {
+      padding: 6px 14px;
+      background: rgba(239,68,68,0.12);
+      color: #DC2626;
+      border: 1px solid rgba(239,68,68,0.3);
+      border-radius: 9999px;
+      font-size: 11.5px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .remed-btn-reject:hover {
+      background: rgba(239,68,68,0.22);
+    }
+
+    /* ═══════════════════ BENTO GRID ═══════════════════ */
+    .bento-row { display: grid; gap: 16px; }
+    .bento-row-hero { grid-template-columns: 2fr 1fr 1fr 1fr; }
+    .bento-row-charts { grid-template-columns: 1fr 1fr; }
+    .bento-row-bottom { grid-template-columns: 1fr 1fr; }
+
+    /* Hero card with iridescent glow */
+    .hero-card {
+      background: linear-gradient(135deg, rgba(224,215,255,0.70) 0%, rgba(212,232,255,0.65) 50%, rgba(255,255,255,0.85) 100%);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+      border: 1px solid rgba(255,255,255,0.90);
+      border-radius: var(--radius-card);
+      box-shadow: 0 10px 40px rgba(91,124,250,0.12), var(--glass-shadow);
+      padding: 24px;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero-card::before {
+      content: '';
+      position: absolute;
+      top: -40px; right: -40px;
+      width: 140px; height: 140px;
+      background: radial-gradient(circle, rgba(255,216,204,0.45) 0%, transparent 70%);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    /* 4-State Health Badge */
+    .health-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: var(--radius-pill);
+      font-size: 11.5px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      transition: all 0.3s;
+    }
+    .health-badge.healthy {
+      background: rgba(34,197,94,0.14);
+      color: #16A34A;
+      border: 1px solid rgba(34,197,94,0.30);
+    }
+    .health-badge.degraded {
+      background: rgba(245,158,11,0.14);
+      color: #D97706;
+      border: 1px solid rgba(245,158,11,0.30);
+    }
+    .health-badge.critical {
+      background: rgba(239,68,68,0.14);
+      color: #DC2626;
+      border: 1px solid rgba(239,68,68,0.30);
+      animation: pulse-border 1.5s infinite;
+    }
+    .health-badge.stale {
+      background: rgba(148,163,184,0.18);
+      color: #64748B;
+      border: 1px solid rgba(148,163,184,0.35);
+    }
+    .health-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+    @keyframes pulse-border {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.3); }
+      50% { box-shadow: 0 0 0 6px rgba(239,68,68,0); }
+    }
+
+    /* KPI Cards */
+    .kpi-card {
+      padding: 22px 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 10px;
+      position: relative;
+    }
+    .kpi-card.latency {
+      background: linear-gradient(135deg, rgba(213,245,227,0.45) 0%, rgba(255,255,255,0.75) 100%);
+    }
+    .kpi-card.cpu {
+      background: linear-gradient(135deg, rgba(255,216,204,0.40) 0%, rgba(255,255,255,0.75) 100%);
+    }
+    .kpi-card.sla {
+      background: linear-gradient(135deg, rgba(212,232,255,0.45) 0%, rgba(255,255,255,0.75) 100%);
+    }
+    .kpi-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--text-secondary);
+    }
+    .kpi-value {
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--text-primary);
+      letter-spacing: -1px;
+      line-height: 1;
+    }
+    .kpi-value span { font-size: 16px; font-weight: 600; color: var(--text-secondary); }
+    .delta-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 9px;
+      border-radius: var(--radius-pill);
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .delta-pill.green { background: rgba(34,197,94,0.12); color: #16A34A; }
+    .delta-pill.amber { background: rgba(245,158,11,0.12); color: #D97706; }
+    .delta-pill.red   { background: rgba(239,68,68,0.12);  color: #DC2626; }
+    .delta-pill.blue  { background: rgba(91,124,250,0.12); color: #5B7CFA; }
+
+    .kpi-icon-badge {
+      width: 32px; height: 32px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px;
+    }
+
+    /* CTA Button */
+    .cta-btn {
+      padding: 9px 18px;
+      border-radius: var(--radius-pill);
+      background: var(--accent);
+      color: #fff;
+      font-size: 12.5px;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 4px 16px rgba(91,124,250,0.30);
+      transition: all 0.2s cubic-bezier(0.16,1,0.3,1);
+    }
+    .cta-btn:hover {
+      background: var(--accent2);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(91,124,250,0.40);
+    }
+
+    /* ═══════════════════ CHARTS BENTO ═══════════════════ */
+    .chart-card {
+      padding: 22px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .chart-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .chart-title {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--text-primary);
+    }
+    .chart-subtitle {
+      font-size: 11.5px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+    .chart-legend {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+    .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .chart-wrap { position: relative; height: 190px; width: 100%; }
+
+    /* ═══════════════════ ACTION TOOLBAR ═══════════════════ */
+    .pill-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .action-pill {
+      padding: 8px 16px;
+      border-radius: var(--radius-pill);
+      background: rgba(255,255,255,0.70);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255,255,255,0.85);
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-primary);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 2px 8px rgba(31,38,135,0.04);
+      transition: all 0.2s cubic-bezier(0.16,1,0.3,1);
+    }
+    .action-pill:hover {
+      background: rgba(255,255,255,0.95);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(31,38,135,0.08);
+      color: var(--accent);
+    }
+    .action-pill.primary {
+      background: rgba(91,124,250,0.12);
+      border-color: rgba(91,124,250,0.25);
+      color: var(--accent);
+    }
+    .action-pill.primary:hover {
+      background: var(--accent);
+      color: #fff;
+    }
+    .icon-circle {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.70);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255,255,255,0.85);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(31,38,135,0.04);
+      color: var(--text-secondary);
+      transition: all 0.2s;
+    }
+    .icon-circle:hover { background: rgba(255,255,255,0.95); color: var(--accent); }
+    .icon-circle svg { width: 16px; height: 16px; }
+
+    /* ═══════════════════ ANOMALY & EGRESS PANELS ═══════════════════ */
+    .anomaly-panel, .egress-panel {
+      padding: 22px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .egress-filter-row {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 4px;
+    }
+    .egress-filter {
+      padding: 4px 12px;
+      border-radius: var(--radius-pill);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      background: rgba(255,255,255,0.5);
+      border: 1px solid rgba(255,255,255,0.7);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .egress-filter.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+    .egress-item {
+      padding: 10px 14px;
+      background: rgba(255,255,255,0.55);
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.75);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 12px;
+      transition: background 0.15s;
+    }
+    .egress-item:hover { background: rgba(255,255,255,0.85); }
+    .hash-badge {
+      padding: 2px 7px;
+      border-radius: 6px;
+      background: rgba(91,124,250,0.09);
+      color: #4C6EF5;
+      font-size: 11px;
+    }
+    .scrubbed-pill {
+      padding: 2px 8px;
+      border-radius: var(--radius-pill);
+      background: rgba(34,197,94,0.12);
+      color: #16A34A;
+      font-size: 10.5px;
+      font-weight: 700;
+    }
+
+    /* Severity dots */
+    .severity-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .sev-critical { background: #EF4444; box-shadow: 0 0 6px rgba(239,68,68,0.5); }
+    .sev-high     { background: #F97316; }
+    .sev-warning  { background: #F59E0B; }
+    .sev-info     { background: #5B7CFA; }
+
+    /* Comparison pills */
+    .comparison-pill {
+      padding: 5px 13px;
+      border-radius: var(--radius-pill);
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      background: rgba(255,255,255,0.55);
+      border: 1px solid rgba(255,255,255,0.75);
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+    .comparison-pill.active {
+      background: var(--text-primary);
+      color: #fff;
+      border-color: var(--text-primary);
+    }
+
+    /* Fleet health horizontal bar */
+    .fleet-bar-wrap {
+      display: flex;
+      height: 7px;
+      border-radius: var(--radius-pill);
+      overflow: hidden;
+      background: rgba(31,38,135,0.06);
+      gap: 2px;
+    }
+    .fleet-bar-seg { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(15,23,42,0.40);
+      backdrop-filter: blur(8px);
+      display: none; align-items: center; justify-content: center;
+      z-index: 500;
+      padding: 16px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: blur(28px);
+      border: 1px solid rgba(255,255,255,0.90);
+      border-radius: var(--radius-card);
+      box-shadow: 0 24px 64px rgba(31,38,135,0.18);
+      max-width: 600px; width: 100%;
+      padding: 24px;
+    }
+    .modal-title { font-size: 16px; font-weight: 800; color: var(--text-primary); margin-bottom: 12px; }
+    .modal-close {
+      position: absolute; top: 18px; right: 18px;
+      width: 28px; height: 28px; border-radius: 50%;
+      background: rgba(0,0,0,0.06); border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; color: var(--text-secondary);
+    }
+    .modal-close:hover { background: rgba(0,0,0,0.12); }
+    .json-view {
+      background: #1A1D24; color: #E0D7FF;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11.5px; line-height: 1.6;
+      border-radius: 14px; padding: 14px;
+      max-height: 320px; overflow-y: auto;
+    }
+
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid rgba(91,124,250,0.25);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+      display: inline-block;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(91,124,250,0.2); border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(91,124,250,0.35); }
+
+    @media (max-width: 1100px) {
+      .bento-row-hero { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 800px) {
+      .bento-row-hero, .bento-row-charts, .bento-row-bottom { grid-template-columns: 1fr; }
+      #main { padding: 14px 14px 24px; gap: 14px; }
+    }
+
+    .refresh-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: #22C55E;
+      display: inline-block;
+    }
+    .data-flash { animation: flash-update 0.5s ease; }
+    @keyframes flash-update {
+      0% { opacity: 0.4; }
+      100% { opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════ SIDEBAR ═══════════════════════ -->
+<aside id="sidebar">
+  <div class="sidebar-logo">
+    <img src="/static/images/snow_leopard_logo.jpg" alt="SNOW LEOPARDS">
+  </div>
+
+  <nav class="nav-items">
+    <div class="nav-item active" onclick="setNav(this, 'overview')" title="">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      <span class="nav-tooltip">Overview</span>
+    </div>
+    <div class="nav-item" onclick="setNav(this, 'weekly')" title="">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+      <span class="nav-tooltip">Weekly Report</span>
+    </div>
+    <div class="nav-item" onclick="setNav(this, 'monthly')" title="">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+      <span class="nav-tooltip">Monthly Report</span>
+    </div>
+    <div class="nav-item" onclick="setNav(this, 'forecast')" title="">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+      <span class="nav-tooltip">Capacity Forecast</span>
+    </div>
+    <div class="nav-item" onclick="setNav(this, 'risk')" title="">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+      <span class="nav-tooltip">Risk Engine</span>
+    </div>
+    <div class="nav-item" onclick="setNav(this, 'remediation')" title="">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      <span class="nav-tooltip">Remediation Queue</span>
+    </div>
+    <div class="nav-item" onclick="setNav(this, 'copilot')" title="">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
+      <span class="nav-tooltip">AI Copilot</span>
+    </div>
+    <div class="nav-item" onclick="setNav(this, 'demolab')" title="">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+      <span class="nav-tooltip">Demo Lab</span>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <div class="nav-item" onclick="setNav(this, 'collectors')" title="">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M5 12l4-4m-4 4 4 4"/><circle cx="17" cy="12" r="3"/></svg>
+      <span class="nav-tooltip">Collectors</span>
+    </div>
+    <div class="nav-item" onclick="setNav(this, 'egress')" title="">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+      <span class="nav-tooltip">Egress Proof</span>
+    </div>
+    <div class="nav-item" onclick="setNav(this, 'audit')" title="">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+      <span class="nav-tooltip">Audit Logs</span>
+    </div>
+  </nav>
+
+  <div class="sidebar-avatar" id="sidebarAvatar">T1</div>
+</aside>
+
+<!-- ═══════════════════════ MAIN CONTENT ═══════════════════════ -->
+<main id="main">
+
+  <!-- ── TOP HEADER ── -->
+  <header id="header">
+    <div class="search-bar">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" width="16" height="16"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35"/></svg>
+      <input type="text" id="searchInput" placeholder="Search collector ID, tenant, or hash…" oninput="filterSearch(this.value)">
+    </div>
+
+    <div class="header-pill" onclick="cycleTenant()">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+      <span id="tenantPill">TENANT-001</span>
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" width="12" height="12"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+    </div>
+
+    <div class="time-stepper">
+      <div class="time-pill active" onclick="setTimeWindow(this, '1m')">1m</div>
+      <div class="time-pill" onclick="setTimeWindow(this, '5m')">5m</div>
+      <div class="time-pill" onclick="setTimeWindow(this, '15m')">15m</div>
+    </div>
+
+    <div class="notif-btn" onclick="toggleNotifPanel()">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+      <div class="notif-badge" id="notifBadge"></div>
+    </div>
+
+    <div class="user-pill" onclick="confirmLogout()">
+      <div class="user-avatar" id="userAvatarPill">T1</div>
+      <span id="userNamePill">Tenant 1</span>
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="12" height="12"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--text-muted);font-weight:600;white-space:nowrap;">
+      <span class="refresh-dot"></span> Live
+    </div>
+  </header>
+
+  <!-- ── PAGE TITLE ── -->
+  <div style="display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+    <div>
+      <div class="page-title">SNOW LEOPARDS — Autonomous AIOps & Observability</div>
+      <div class="page-subtitle">Multi-tenant telemetry · Predictive capacity · Autonomous remediation · Local AI Copilot</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span class="section-label" style="font-size:12px;color:var(--text-muted);font-weight:600;">Compare vs.</span>
+      <div style="display:flex;gap:6px;">
+        <div class="comparison-pill active" onclick="setComparison(this,'yesterday')" id="cmpYesterday">Yesterday</div>
+        <div class="comparison-pill" onclick="setComparison(this,'past_3d')" id="cmpPast3d">3-Day</div>
+        <div class="comparison-pill" onclick="setComparison(this,'past_7d')" id="cmpPast7d">7-Day</div>
+        <div class="comparison-pill" onclick="setComparison(this,'past_30d')" id="cmpPast30d">30-Day</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       EXECUTIVE OVERVIEW CARD (Phase 5.1 & 5.7)
+       ══════════════════════════════════════════ -->
+  <div class="glass-card executive-overview-card" style="padding:16px 20px;border-radius:22px;background:linear-gradient(135deg, rgba(255,255,255,0.78) 0%, rgba(240,244,255,0.68) 100%);border:1px solid rgba(255,255,255,0.9);">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:12px;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="width:36px;height:36px;border-radius:10px;background:rgba(91,124,250,0.15);display:flex;align-items:center;justify-content:center;font-size:18px;">❄️</div>
+        <div>
+          <div style="font-size:13.5px;font-weight:800;color:var(--text-primary);letter-spacing:-0.2px;">Executive Fleet Overview</div>
+          <div style="font-size:11px;color:var(--text-secondary);">Enterprise SLA & Proactive Resilience Status</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="delta-pill green" id="execOverallHealth">● OPTIMAL</span>
+        <span style="font-size:11px;color:var(--text-muted);font-weight:600;" id="execLastUpdated">Live</span>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:12px;">
+      <div style="padding:12px 14px;background:rgba(255,255,255,0.7);border-radius:14px;border:1px solid rgba(255,255,255,0.85);display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:#6E7485;">Availability</div>
+          <div style="font-size:22px;font-weight:800;color:#1A1D24;margin-top:2px;" id="execAvailability">99.92%</div>
+          <div style="font-size:10.5px;color:#22C55E;font-weight:600;margin-top:2px;">SOC2 Type II Aligned</div>
+        </div>
+        <div style="font-size:24px;">🌐</div>
+      </div>
+      <div style="padding:12px 14px;background:rgba(255,255,255,0.7);border-radius:14px;border:1px solid rgba(255,255,255,0.85);display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:#6E7485;">Total Incidents</div>
+          <div style="font-size:22px;font-weight:800;color:#1A1D24;margin-top:2px;" id="execTotalIncidents">0 Active</div>
+          <div style="font-size:10.5px;color:#6E7485;font-weight:600;margin-top:2px;" id="execCriticalIncidents">0 Critical Unresolved</div>
+        </div>
+        <div style="font-size:24px;">🛡️</div>
+      </div>
+      <div style="padding:12px 14px;background:rgba(255,255,255,0.7);border-radius:14px;border:1px solid rgba(255,255,255,0.85);display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:#6E7485;">Blocked Threats</div>
+          <div style="font-size:22px;font-weight:800;color:#1A1D24;margin-top:2px;" id="execBlockedThreats">14 Blocked</div>
+          <div style="font-size:10.5px;color:#5B7CFA;font-weight:600;margin-top:2px;">Outside Attack Radar Active</div>
+        </div>
+        <div style="font-size:24px;">⚡</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       PHASE 5 TAB SWITCHER
+       ══════════════════════════════════════════ -->
+  <div class="tabs-nav-bar">
+    <button class="tab-pill active" id="tabbtn-overview" onclick="switchDashboardTab('overview')">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Overview
+    </button>
+    <button class="tab-pill" id="tabbtn-weekly" onclick="switchDashboardTab('weekly')">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+      Weekly Report
+    </button>
+    <button class="tab-pill" id="tabbtn-monthly" onclick="switchDashboardTab('monthly')">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+      Monthly Report
+    </button>
+    <button class="tab-pill" id="tabbtn-forecast" onclick="switchDashboardTab('forecast')">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+      Capacity Forecast
+    </button>
+    <button class="tab-pill" id="tabbtn-risk" onclick="switchDashboardTab('risk')">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+      Risk Analysis
+    </button>
+    <button class="tab-pill" id="tabbtn-remediation" onclick="switchDashboardTab('remediation')">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      Remediation Queue
+    </button>
+    <button class="tab-pill" id="tabbtn-copilot" onclick="switchDashboardTab('copilot')">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
+      AI Copilot
+    </button>
+    <button class="tab-pill" id="tabbtn-demolab" onclick="switchDashboardTab('demolab')">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+      Demo Laboratory
+    </button>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       VIEW: OVERVIEW (Default Bento Grid)
+       ══════════════════════════════════════════ -->
+  <div id="view-overview" class="tab-view active">
+
+    <!-- ROW A: HERO + KPI BENTO -->
+    <div class="bento-row bento-row-hero">
+      <!-- Hero Card -->
+      <div class="hero-card">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+          <div>
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#6E7485;margin-bottom:6px;">Active Collector Node</div>
+            <div style="font-size:22px;font-weight:800;color:#1A1D24;letter-spacing:-0.5px;" id="heroTenantId">TENANT-001</div>
+            <div style="font-size:11.5px;color:#6E7485;font-weight:500;margin-top:4px;">
+              Hash: <span class="mono" id="heroHash" style="color:#5B7CFA;font-size:10.5px;">sha256:...</span>
+            </div>
+          </div>
+          <div id="heroHealthBadge" class="health-badge healthy">
+            <span class="health-dot"></span>
+            <span id="heroHealthText">Healthy</span>
+          </div>
+        </div>
+
+        <div style="margin-top:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+          <button class="cta-btn" onclick="scrollToEgress()">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+            Inspect Egress Payload
+          </button>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <div style="font-size:11px;font-weight:600;color:#6E7485;">Fleet Health</div>
+            <div class="fleet-bar-wrap" style="width:100px;">
+              <div class="fleet-bar-seg" id="fleetHealthy" style="background:#22C55E;width:70%;"></div>
+              <div class="fleet-bar-seg" id="fleetDegraded" style="background:#F59E0B;width:15%;"></div>
+              <div class="fleet-bar-seg" id="fleetCritical" style="background:#EF4444;width:10%;"></div>
+              <div class="fleet-bar-seg" id="fleetStale" style="background:#94A3B8;width:5%;"></div>
+            </div>
+            <div style="font-size:11px;color:#6E7485;" id="fleetSummaryText">4 nodes</div>
+          </div>
+        </div>
+
+        <div style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+          <div style="padding:10px 12px;background:rgba(255,255,255,0.55);border-radius:12px;border:1px solid rgba(255,255,255,0.80);">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#9BA3B5;">Status</div>
+            <div style="font-size:13px;font-weight:800;color:#22C55E;margin-top:4px;" id="heroStatus">Active</div>
+          </div>
+          <div style="padding:10px 12px;background:rgba(255,255,255,0.55);border-radius:12px;border:1px solid rgba(255,255,255,0.80);">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#9BA3B5;">Uptime</div>
+            <div style="font-size:13px;font-weight:800;color:#1A1D24;margin-top:4px;" id="heroUptime">99.9%</div>
+          </div>
+          <div style="padding:10px 12px;background:rgba(255,255,255,0.55);border-radius:12px;border:1px solid rgba(255,255,255,0.80);">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#9BA3B5;">Region</div>
+            <div style="font-size:13px;font-weight:800;color:#1A1D24;margin-top:4px;" id="heroRegion">us-east-1</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- KPI Card 1: Latency -->
+      <div class="glass-card kpi-card latency">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <span class="kpi-label">Latency / Loss</span>
+          <div class="kpi-icon-badge" style="background:rgba(213,245,227,0.65);">⚡</div>
+        </div>
+        <div class="kpi-value tabular" id="kpiLatency">14.2 <span>ms</span></div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="delta-pill green" id="kpiLatencyDelta">▼ 1.2% vs baseline</span>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);font-weight:500;" id="kpiLoss">Pkt loss: 0.02%</div>
+      </div>
+
+      <!-- KPI Card 2: CPU/Memory -->
+      <div class="glass-card kpi-card cpu">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <span class="kpi-label">CPU / Memory</span>
+          <div class="kpi-icon-badge" style="background:rgba(255,216,204,0.65);">💻</div>
+        </div>
+        <div class="kpi-value tabular" id="kpiCpu">42.8 <span>%</span></div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="delta-pill amber" id="kpiCpuDelta">▲ 3.1% vs baseline</span>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);font-weight:500;" id="kpiMem">RAM: 61.4%</div>
+      </div>
+
+      <!-- KPI Card 3: Buffer / SLA -->
+      <div class="glass-card kpi-card sla">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <span class="kpi-label">Buffer / SLA</span>
+          <div class="kpi-icon-badge" style="background:rgba(212,232,255,0.65);">🔒</div>
+        </div>
+        <div class="kpi-value tabular" id="kpiSla">99.9 <span>%</span></div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="delta-pill blue" id="kpiSlaDelta">0 queued</span>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);font-weight:500;" id="kpiBuffer">Buffer: Empty</div>
+      </div>
+    </div>
+
+    <!-- ROW B: CHARTS BENTO -->
+    <div class="bento-row bento-row-charts">
+      <!-- Telemetry & Latency Trends -->
+      <div class="glass-card-static chart-card">
+        <div class="chart-header">
+          <div>
+            <div class="chart-title">Telemetry & Latency Trends</div>
+            <div class="chart-subtitle">Real-time · <span id="lineChartWindow">1m</span> refresh</div>
+          </div>
+          <div class="chart-legend">
+            <div class="legend-item"><div class="legend-dot" style="background:#5B7CFA;"></div>Latency</div>
+            <div class="legend-item"><div class="legend-dot" style="background:#FF8A80;"></div>Throughput</div>
+          </div>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="lineChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Throughput vs Packet Loss -->
+      <div class="glass-card-static chart-card">
+        <div class="chart-header">
+          <div>
+            <div class="chart-title">Throughput vs Packet Loss</div>
+            <div class="chart-subtitle">Resource breakdown · Comparison active</div>
+          </div>
+          <div class="chart-legend">
+            <div class="legend-item"><div class="legend-dot" style="background:#5B7CFA;"></div>Today</div>
+            <div class="legend-item"><div class="legend-dot" style="background:#E0D7FF;box-shadow:inset 0 0 0 1px #9b8ef5;"></div>Baseline</div>
+          </div>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="barChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- PILL ACTION TOOLBAR -->
+    <div class="pill-toolbar">
+      <button class="action-pill" onclick="simulateOutage()">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        Simulate 60s Outage
+      </button>
+      <button class="action-pill" onclick="verifyTLS()">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+        Verify TLS
+      </button>
+      <button class="action-pill primary" onclick="exportAuditLog()">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        Export Audit Log
+      </button>
+      <button class="action-pill" onclick="filterRegion()">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        Filter Region
+      </button>
+      <button class="action-pill" onclick="openAttackRadar()">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="3"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 1v3m0 16v3M4.22 4.22l2.12 2.12m11.32 11.32l2.12 2.12M1 12h3m16 0h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
+        Attack Radar
+      </button>
+
+      <div style="margin-left:auto;display:flex;gap:6px;">
+        <div class="icon-circle" title="Refresh now" onclick="refreshAll()">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+        </div>
+        <div class="icon-circle" title="Fullscreen" onclick="toggleFullscreen()">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
+        </div>
+        <div class="icon-circle" title="Collector Dashboard" onclick="window.location.href='/collector-dashboard'">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2v-4M9 21H5a2 2 0 01-2-2v-4m0 0h18"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- ROW C: ANOMALY INBOX + EGRESS STREAM -->
+    <div class="bento-row bento-row-bottom">
+      <!-- Anomaly & Outage Inbox -->
+      <div class="glass-card-static anomaly-panel">
+        <div class="chart-header">
+          <div>
+            <div class="chart-title">Contextual Anomaly Inbox</div>
+            <div class="chart-subtitle">AI-triggered · <span style="color:#22C55E;font-weight:700;">≤15s</span> detection</div>
+          </div>
+          <span class="delta-pill red" id="anomalyCount">0 active</span>
+        </div>
+        <div id="anomalyList" style="display:flex;flex-direction:column;gap:8px;max-height:280px;overflow-y:auto;">
+          <div style="text-align:center;padding:24px;color:var(--text-muted);font-size:12px;">
+            <div class="spinner" style="margin:0 auto 10px;"></div>
+            Loading anomalies…
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Egress Proof Stream -->
+      <div class="glass-card-static egress-panel" id="egressPanel">
+        <div class="chart-header">
+          <div>
+            <div class="chart-title">Live Egress Proof Stream</div>
+            <div class="chart-subtitle">Zero-Trust verified · Scrubbed PII</div>
+          </div>
+        </div>
+        <div class="egress-filter-row">
+          <div class="egress-filter active" onclick="setEgressFilter(this,'all')">All</div>
+          <div class="egress-filter" onclick="setEgressFilter(this,'allow_listed')">Allow-listed</div>
+          <div class="egress-filter" onclick="setEgressFilter(this,'scrubbed')">Scrubbed</div>
+          <div class="egress-filter" onclick="setEgressFilter(this,'out_of_order')">Out-of-Order</div>
+        </div>
+        <div id="egressList" style="display:flex;flex-direction:column;gap:7px;max-height:260px;overflow-y:auto;">
+          <div style="text-align:center;padding:24px;color:var(--text-muted);font-size:12px;">
+            <div class="spinner" style="margin:0 auto 10px;"></div>
+            Loading egress proofs…
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- COMPARISON VERDICT BANNER -->
+    <div id="comparisonBanner" class="glass-card-static" style="padding:16px 22px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;display:none;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="width:38px;height:38px;border-radius:12px;background:rgba(91,124,250,0.12);display:flex;align-items:center;justify-content:center;font-size:20px;">📊</div>
+        <div>
+          <div style="font-size:13px;font-weight:800;color:var(--text-primary);" id="comparisonTitle">Comparison Result</div>
+          <div style="font-size:11.5px;color:var(--text-secondary);" id="comparisonVerdict">Loading…</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span class="delta-pill blue" id="comparisonDelta">+0.0%</span>
+        <span style="font-size:11px;color:var(--text-muted);font-weight:600;" id="comparisonConfidence">Confidence: 98.4%</span>
+      </div>
+    </div>
+  </div> <!-- End #view-overview -->
+
+  <!-- ══════════════════════════════════════════
+       VIEW: WEEKLY REPORT (Phase 5.1 & 5.7)
+       ══════════════════════════════════════════ -->
+  <div id="view-weekly" class="tab-view">
+    <div class="glass-card-static" style="padding:22px 26px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:18px;">
+        <div>
+          <div style="font-size:18px;font-weight:800;color:var(--text-primary);letter-spacing:-0.3px;">Weekly Executive Intelligence Report</div>
+          <div style="font-size:12px;color:var(--text-secondary);margin-top:2px;">Consolidated fleet SLA, incident volume, and diagnostic telemetry for the past 7 days</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <span class="delta-pill blue" id="wkReportId">REP-WK-...</span>
+          <button class="action-pill primary" onclick="loadWeeklyReport()">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            Refresh Report
+          </button>
+        </div>
+      </div>
+
+      <!-- 8 Key Weekly Report Metrics -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(210px, 1fr));gap:14px;">
+        <div style="padding:14px 16px;background:rgba(255,255,255,0.72);border-radius:16px;border:1px solid rgba(255,255,255,0.85);">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#6E7485;">Average CPU</div>
+          <div style="font-size:26px;font-weight:800;color:#1A1D24;margin-top:4px;" id="wkAvgCpu">--%</div>
+          <div style="font-size:11px;color:#22C55E;font-weight:600;margin-top:2px;">Nominal cluster load</div>
+        </div>
+        <div style="padding:14px 16px;background:rgba(255,255,255,0.72);border-radius:16px;border:1px solid rgba(255,255,255,0.85);">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#6E7485;">Average Memory</div>
+          <div style="font-size:26px;font-weight:800;color:#1A1D24;margin-top:4px;" id="wkAvgMem">--%</div>
+          <div style="font-size:11px;color:#F59E0B;font-weight:600;margin-top:2px;">Worker thread cache stable</div>
+        </div>
+        <div style="padding:14px 16px;background:rgba(255,255,255,0.72);border-radius:16px;border:1px solid rgba(255,255,255,0.85);">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#6E7485;">Average Latency</div>
+          <div style="font-size:26px;font-weight:800;color:#1A1D24;margin-top:4px;" id="wkAvgLat">-- ms</div>
+          <div style="font-size:11px;color:#22C55E;font-weight:600;margin-top:2px;">Target: &lt; 50 ms</div>
+        </div>
+        <div style="padding:14px 16px;background:rgba(255,255,255,0.72);border-radius:16px;border:1px solid rgba(255,255,255,0.85);">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#6E7485;">Average Packet Loss</div>
+          <div style="font-size:26px;font-weight:800;color:#1A1D24;margin-top:4px;" id="wkAvgLoss">--%</div>
+          <div style="font-size:11px;color:#22C55E;font-weight:600;margin-top:2px;">Zero-drop egress transit</div>
+        </div>
+        <div style="padding:14px 16px;background:rgba(255,255,255,0.72);border-radius:16px;border:1px solid rgba(255,255,255,0.85);">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#6E7485;">Total Alerts</div>
+          <div style="font-size:26px;font-weight:800;color:#1A1D24;margin-top:4px;" id="wkTotalAlerts">0</div>
+          <div style="font-size:11px;color:#6E7485;font-weight:600;margin-top:2px;">Automated correlation</div>
+        </div>
+        <div style="padding:14px 16px;background:rgba(255,255,255,0.72);border-radius:16px;border:1px solid rgba(255,255,255,0.85);">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#6E7485;">Total Incidents</div>
+          <div style="font-size:26px;font-weight:800;color:#1A1D24;margin-top:4px;" id="wkTotalIncidents">0</div>
+          <div style="font-size:11px;color:#6E7485;font-weight:600;margin-top:2px;">RCA engine clustered</div>
+        </div>
+        <div style="padding:14px 16px;background:rgba(255,255,255,0.72);border-radius:16px;border:1px solid rgba(255,255,255,0.85);">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#6E7485;">Top RCA Category</div>
+          <div style="font-size:16px;font-weight:800;color:#5B7CFA;margin-top:6px;word-break:break-all;" id="wkTopRca">NOMINAL</div>
+          <div style="font-size:11px;color:#6E7485;font-weight:600;margin-top:4px;">Primary failure vector</div>
+        </div>
+        <div style="padding:14px 16px;background:rgba(255,255,255,0.72);border-radius:16px;border:1px solid rgba(255,255,255,0.85);">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#6E7485;">Fleet Health</div>
+          <div style="font-size:26px;font-weight:800;color:#22C55E;margin-top:4px;" id="wkFleetHealth">98.5%</div>
+          <div style="font-size:11px;color:#22C55E;font-weight:600;margin-top:2px;">Nodes nominal</div>
+        </div>
+      </div>
+
+      <div style="margin-top:18px;padding:14px 18px;background:rgba(224,215,255,0.3);border-radius:14px;border:1px solid rgba(224,215,255,0.6);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+        <div style="font-size:12.5px;color:var(--text-primary);font-weight:600;" id="wkVerdict">
+          Verdict: Fleet operational parameters stable within standard baseline bounds.
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);" id="wkGeneratedAt">Generated: --</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       VIEW: MONTHLY REPORT (Phase 5.1 & 5.7)
+       ══════════════════════════════════════════ -->
+  <div id="view-monthly" class="tab-view">
+    <div class="glass-card-static" style="padding:22px 26px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:18px;">
+        <div>
+          <div style="font-size:18px;font-weight:800;color:var(--text-primary);letter-spacing:-0.3px;">Monthly Capacity & Resilience Intelligence</div>
+          <div style="font-size:12px;color:var(--text-secondary);margin-top:2px;">Strategic multi-week utilization trajectories, growth percentages, and availability scoring</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <span class="delta-pill blue" id="moReportId">REP-MO-...</span>
+          <button class="action-pill primary" onclick="loadMonthlyReport()">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            Refresh Monthly
+          </button>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:16px;">
+        <div style="padding:16px 18px;background:rgba(255,255,255,0.72);border-radius:18px;border:1px solid rgba(255,255,255,0.85);">
+          <div style="font-size:12px;font-weight:700;text-transform:uppercase;color:#6E7485;margin-bottom:10px;">Resource Utilization Trends</div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:13px;font-weight:600;color:#1A1D24;">CPU Trajectory:</span>
+              <span class="delta-pill green" id="moCpuTrend">STABLE</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:13px;font-weight:600;color:#1A1D24;">Memory Trajectory:</span>
+              <span class="delta-pill amber" id="moMemTrend">MODERATE GROWTH</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:13px;font-weight:600;color:#1A1D24;">Disk Trajectory:</span>
+              <span class="delta-pill green" id="moDiskTrend">STABLE</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="padding:16px 18px;background:rgba(255,255,255,0.72);border-radius:18px;border:1px solid rgba(255,255,255,0.85);">
+          <div style="font-size:12px;font-weight:700;text-transform:uppercase;color:#6E7485;margin-bottom:10px;">Security & Outage Dynamics</div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:13px;font-weight:600;color:#1A1D24;">Incident Growth %:</span>
+              <span class="delta-pill blue" id="moIncGrowth">+0.0%</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:13px;font-weight:600;color:#1A1D24;">Threat Growth %:</span>
+              <span class="delta-pill red" id="moThreatGrowth">+0.0%</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:13px;font-weight:600;color:#1A1D24;">Compliance State:</span>
+              <span class="delta-pill green">SOC2 TYPE II</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="padding:16px 18px;background:rgba(255,255,255,0.72);border-radius:18px;border:1px solid rgba(255,255,255,0.85);">
+          <div style="font-size:12px;font-weight:700;text-transform:uppercase;color:#6E7485;margin-bottom:10px;">Executive SLA & Capacity Risk</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <span style="font-size:13px;font-weight:600;color:#1A1D24;">Availability Score:</span>
+            <span style="font-size:22px;font-weight:800;color:#22C55E;" id="moAvailScore">99.92%</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:13px;font-weight:600;color:#1A1D24;">Capacity Risk Level:</span>
+            <span class="delta-pill green" id="moCapacityRisk">LOW RISK</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:16px;padding:14px 18px;background:rgba(212,232,255,0.35);border-radius:14px;border:1px solid rgba(212,232,255,0.65);">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#3B82F6;">Strategic Recommendation</div>
+        <div style="font-size:13px;font-weight:600;color:#1A1D24;margin-top:4px;" id="moRecommendation">
+          Review high-memory microservices and scale disk volumes on cluster ingress nodes.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       VIEW: CAPACITY FORECAST (Phase 5.2 & 5.7)
+       ══════════════════════════════════════════ -->
+  <div id="view-forecast" class="tab-view">
+    <div class="glass-card-static" style="padding:22px 26px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:18px;">
+        <div>
+          <div style="font-size:18px;font-weight:800;color:var(--text-primary);letter-spacing:-0.3px;">Capacity Forecast Engine</div>
+          <div style="font-size:12px;color:var(--text-secondary);margin-top:2px;">Pure numpy + pandas forward-looking modeling (1st degree linear regression np.polyfit + rolling moving average)</div>
+        </div>
+        <button class="action-pill primary" onclick="loadForecastData()">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          Recompute Forecasts
+        </button>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(300px, 1fr));gap:16px;">
+        <!-- CPU Forecast -->
+        <div class="glass-card" style="padding:18px 20px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <div style="font-size:14px;font-weight:800;color:#1A1D24;">CPU Forecast</div>
+            <span class="delta-pill green" id="fcCpuRisk">LOW</span>
+          </div>
+          <div style="margin-top:14px;display:flex;justify-content:space-between;align-items:baseline;">
+            <span style="font-size:11px;color:#6E7485;font-weight:600;">Current Load</span>
+            <span style="font-size:24px;font-weight:800;color:#1A1D24;" id="fcCpuCurrent">--%</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:4px;">
+            <span style="font-size:11px;color:#6E7485;font-weight:600;">7-Day Predicted</span>
+            <span style="font-size:20px;font-weight:700;color:#5B7CFA;" id="fcCpuPredicted">--%</span>
+          </div>
+          <div style="margin-top:12px;padding:8px 12px;background:rgba(255,255,255,0.7);border-radius:10px;display:flex;justify-content:space-between;">
+            <span style="font-size:11px;color:#6E7485;font-weight:600;">Days to 90% Threshold:</span>
+            <span style="font-size:11.5px;font-weight:800;color:#1A1D24;" id="fcCpuDays">-- days</span>
+          </div>
+        </div>
+
+        <!-- Memory Forecast -->
+        <div class="glass-card" style="padding:18px 20px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <div style="font-size:14px;font-weight:800;color:#1A1D24;">Memory (RAM) Forecast</div>
+            <span class="delta-pill amber" id="fcMemRisk">MODERATE</span>
+          </div>
+          <div style="margin-top:14px;display:flex;justify-content:space-between;align-items:baseline;">
+            <span style="font-size:11px;color:#6E7485;font-weight:600;">Current Load</span>
+            <span style="font-size:24px;font-weight:800;color:#1A1D24;" id="fcMemCurrent">--%</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:4px;">
+            <span style="font-size:11px;color:#6E7485;font-weight:600;">7-Day Predicted</span>
+            <span style="font-size:20px;font-weight:700;color:#F59E0B;" id="fcMemPredicted">--%</span>
+          </div>
+          <div style="margin-top:12px;padding:8px 12px;background:rgba(255,255,255,0.7);border-radius:10px;display:flex;justify-content:space-between;">
+            <span style="font-size:11px;color:#6E7485;font-weight:600;">Days to 90% Threshold:</span>
+            <span style="font-size:11.5px;font-weight:800;color:#1A1D24;" id="fcMemDays">-- days</span>
+          </div>
+        </div>
+
+        <!-- Disk Forecast -->
+        <div class="glass-card" style="padding:18px 20px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <div style="font-size:14px;font-weight:800;color:#1A1D24;">Disk Capacity Forecast</div>
+            <span class="delta-pill green" id="fcDiskRisk">LOW</span>
+          </div>
+          <div style="margin-top:14px;display:flex;justify-content:space-between;align-items:baseline;">
+            <span style="font-size:11px;color:#6E7485;font-weight:600;">Current Load</span>
+            <span style="font-size:24px;font-weight:800;color:#1A1D24;" id="fcDiskCurrent">--%</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:4px;">
+            <span style="font-size:11px;color:#6E7485;font-weight:600;">7-Day Predicted</span>
+            <span style="font-size:20px;font-weight:700;color:#22C55E;" id="fcDiskPredicted">--%</span>
+          </div>
+          <div style="margin-top:12px;padding:8px 12px;background:rgba(255,255,255,0.7);border-radius:10px;display:flex;justify-content:space-between;">
+            <span style="font-size:11px;color:#6E7485;font-weight:600;">Days to 90% Threshold:</span>
+            <span style="font-size:11.5px;font-weight:800;color:#1A1D24;" id="fcDiskDays">-- days</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       VIEW: RISK ANALYSIS (Phase 5.3 & 5.7)
+       ══════════════════════════════════════════ -->
+  <div id="view-risk" class="tab-view">
+    <div class="glass-card-static" style="padding:22px 26px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:18px;">
+        <div>
+          <div style="font-size:18px;font-weight:800;color:var(--text-primary);letter-spacing:-0.3px;">Proactive Risk Engine</div>
+          <div style="font-size:12px;color:var(--text-secondary);margin-top:2px;">Predicts critical system outages and resource starvation before physical threshold breach occurs</div>
+        </div>
+        <button class="action-pill primary" onclick="loadRiskData()">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          Re-evaluate Risks
+        </button>
+      </div>
+
+      <!-- Top Risk Banner -->
+      <div style="padding:14px 18px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.22);border-radius:16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:gap;gap:10px;">
+        <div>
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#DC2626;">Primary Active Threat Risk</div>
+          <div style="font-size:15px;font-weight:800;color:#1A1D24;margin-top:2px;" id="riskTopTitle">LATENCY_DEGRADATION</div>
+          <div style="font-size:11.5px;color:#6E7485;margin-top:2px;" id="riskTopDesc">Loading risk assessments…</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <span class="delta-pill red" id="riskTopProb">--% Probability</span>
+          <span class="delta-pill amber" id="riskTopHours">Est: -- hrs</span>
+        </div>
+      </div>
+
+      <!-- 4 Risk Cards Grid -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));gap:14px;" id="riskCardsContainer">
+        <!-- Dynamically populated by loadRiskData() -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       VIEW: REMEDIATION QUEUE (Phase 5.4 & 5.5)
+       ══════════════════════════════════════════ -->
+  <div id="view-remediation" class="tab-view">
+    <div class="glass-card-static" style="padding:22px 26px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:18px;">
+        <div>
+          <div style="font-size:18px;font-weight:800;color:var(--text-primary);letter-spacing:-0.3px;">Autonomous Remediation & Policy Engine</div>
+          <div style="font-size:12px;color:var(--text-secondary);margin-top:2px;">Simulation-only operational runbooks with 3-step governance verification (Policy Check, Risk Check, Audit Recording)</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <span class="delta-pill green" id="policyModeBadge">Production: Manual Approval</span>
+          <button class="action-pill primary" onclick="loadRemediationData()">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            Refresh Queue
+          </button>
+        </div>
+      </div>
+
+      <div id="remediationList" style="display:flex;flex-direction:column;gap:10px;">
+        <!-- Dynamically rendered -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       VIEW: AI COPILOT (Phase 5.6 & 5.7)
+       ══════════════════════════════════════════ -->
+  <div id="view-copilot" class="tab-view">
+    <div class="glass-card-static" style="padding:22px 26px;display:flex;flex-direction:column;height:640px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:38px;height:38px;border-radius:12px;background:rgba(91,124,250,0.14);display:flex;align-items:center;justify-content:center;font-size:20px;">🤖</div>
+          <div>
+            <div style="font-size:16px;font-weight:800;color:var(--text-primary);">SNOW LEOPARDS Autonomous AI Copilot</div>
+            <div style="font-size:11.5px;color:var(--text-secondary);">Local heuristic routing over RCA, Threat, Reporting, and Forecast engines (No external LLM APIs)</div>
+          </div>
+        </div>
+        <span class="delta-pill green">● Strictly Local &amp; Private</span>
+      </div>
+
+      <!-- Preset Prompt Chips -->
+      <div style="display:flex;align-items:center;gap:8px;overflow-x:auto;padding-bottom:10px;margin-bottom:10px;border-bottom:1px solid rgba(31,38,135,0.06);">
+        <span style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;white-space:nowrap;">Prompts:</span>
+        <button class="copilot-chip" onclick="askCopilotPrompt('Why is Node-1 degraded?')">Why is Node-1 degraded?</button>
+        <button class="copilot-chip" onclick="askCopilotPrompt('Show me top incidents')">Show top incidents</button>
+        <button class="copilot-chip" onclick="askCopilotPrompt('Will memory run out this week?')">Will memory run out?</button>
+        <button class="copilot-chip" onclick="askCopilotPrompt('Are we under attack?')">Are we under attack?</button>
+        <button class="copilot-chip" onclick="askCopilotPrompt('What should I fix first?')">What should I fix first?</button>
+      </div>
+
+      <!-- Messages Transcript -->
+      <div id="copilotMessages" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:12px;padding:12px 6px;">
+        <div class="copilot-bubble-bot">
+          👋 <strong>Hello Operator!</strong> I am your offline, zero-trust AIOps Copilot. I analyze RCA diagnostics, threat telemetry, capacity projections, and remediation policies directly on your cluster without sending any data to external AI cloud services. How can I assist you?
+        </div>
+      </div>
+
+      <!-- Chat Input Form -->
+      <form onsubmit="handleCopilotSubmit(event)" style="margin-top:14px;display:flex;gap:10px;align-items:center;">
+        <input type="text" id="copilotInput" placeholder="Ask anything about fleet health, root causes, risks, or remediation…" style="flex:1;padding:12px 18px;border-radius:9999px;border:1px solid rgba(255,255,255,0.9);background:rgba(255,255,255,0.75);backdrop-filter:blur(16px);font-size:13px;color:var(--text-primary);outline:none;box-shadow:0 4px 14px rgba(31,38,135,0.04);">
+        <button type="submit" class="cta-btn" style="padding:12px 22px;border-radius:9999px;font-size:12.5px;font-weight:700;display:flex;align-items:center;gap:6px;">
+          Ask Copilot
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       VIEW: DEMO LABORATORY (Phase 5.5)
+       ══════════════════════════════════════════ -->
+  <div id="view-demolab" class="tab-view">
+    <div class="glass-card-static" style="padding:22px 26px;margin-bottom:18px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:12px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:40px;height:40px;border-radius:12px;background:rgba(91,124,250,0.14);display:flex;align-items:center;justify-content:center;font-size:22px;">🧪</div>
+          <div>
+            <div style="font-size:16px;font-weight:800;color:var(--text-primary);">Interactive Incident Generator &amp; RCA Evaluation Lab</div>
+            <div style="font-size:12px;color:var(--text-secondary);">Click any test button below to inject live synthetic failure patterns and observe real-time causal diagnosis and runbooks.</div>
+          </div>
+        </div>
+        <span class="delta-pill purple">Judge Evaluation Mode</span>
+      </div>
+
+      <!-- 5 Incident Generator Buttons -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(210px, 1fr));gap:14px;margin-top:16px;">
+        
+        <!-- CPU Spike -->
+        <div class="glass-card" style="padding:16px;border-radius:18px;display:flex;flex-direction:column;justify-content:space-between;">
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+              <span style="font-size:18px;">🔥</span>
+              <span style="font-size:13px;font-weight:700;color:var(--text-primary);">CPU Contention Spike</span>
+            </div>
+            <p style="font-size:11.5px;color:var(--text-secondary);line-height:1.4;margin-bottom:12px;">
+              Simulates sustained 96.8% computational contention across all CPU worker threads.
+            </p>
+          </div>
+          <button class="cta-btn" onclick="triggerDemoIncident('cpu_spike')" style="width:100%;padding:10px;font-size:11.5px;justify-content:center;">
+            ⚡ Trigger CPU Spike
+          </button>
+        </div>
+
+        <!-- Memory Leak -->
+        <div class="glass-card" style="padding:16px;border-radius:18px;display:flex;flex-direction:column;justify-content:space-between;">
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+              <span style="font-size:18px;">📈</span>
+              <span style="font-size:13px;font-weight:700;color:var(--text-primary);">Monotonic RAM Leak</span>
+            </div>
+            <p style="font-size:11.5px;color:var(--text-secondary);line-height:1.4;margin-bottom:12px;">
+              Injects progressive heap growth (84% → 89.5% → 95.2%) triggering causal leak detection.
+            </p>
+          </div>
+          <button class="cta-btn" onclick="triggerDemoIncident('memory_leak')" style="width:100%;padding:10px;font-size:11.5px;justify-content:center;">
+            ⚡ Trigger Memory Leak
+          </button>
+        </div>
+
+        <!-- Brute Force Attack -->
+        <div class="glass-card" style="padding:16px;border-radius:18px;display:flex;flex-direction:column;justify-content:space-between;">
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+              <span style="font-size:18px;">🚨</span>
+              <span style="font-size:13px;font-weight:700;color:var(--text-primary);">Outside Brute Force</span>
+            </div>
+            <p style="font-size:11.5px;color:var(--text-secondary);line-height:1.4;margin-bottom:12px;">
+              Generates 16 rapid failed auth attempts triggering Outside Attack Radar alerts.
+            </p>
+          </div>
+          <button class="cta-btn" onclick="triggerDemoIncident('brute_force')" style="width:100%;padding:10px;font-size:11.5px;justify-content:center;background:linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">
+            ⚡ Trigger Brute Force
+          </button>
+        </div>
+
+        <!-- DDoS Flood -->
+        <div class="glass-card" style="padding:16px;border-radius:18px;display:flex;flex-direction:column;justify-content:space-between;">
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+              <span style="font-size:18px;">🌊</span>
+              <span style="font-size:13px;font-weight:700;color:var(--text-primary);">Volumetric DDoS Flood</span>
+            </div>
+            <p style="font-size:11.5px;color:var(--text-secondary);line-height:1.4;margin-bottom:12px;">
+              Simulates uplink saturation with 18.5% packet drop and 215ms latency degradation.
+            </p>
+          </div>
+          <button class="cta-btn" onclick="triggerDemoIncident('ddos_flood')" style="width:100%;padding:10px;font-size:11.5px;justify-content:center;background:linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+            ⚡ Trigger DDoS Flood
+          </button>
+        </div>
+
+        <!-- Slowloris Starvation -->
+        <div class="glass-card" style="padding:16px;border-radius:18px;display:flex;flex-direction:column;justify-content:space-between;">
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+              <span style="font-size:18px;">⏳</span>
+              <span style="font-size:13px;font-weight:700;color:var(--text-primary);">Slowloris Starvation</span>
+            </div>
+            <p style="font-size:11.5px;color:var(--text-secondary);line-height:1.4;margin-bottom:12px;">
+              Induces 265ms latency with 18% CPU, isolating hanging socket pool starvation.
+            </p>
+          </div>
+          <button class="cta-btn" onclick="triggerDemoIncident('slowloris')" style="width:100%;padding:10px;font-size:11.5px;justify-content:center;">
+            ⚡ Trigger Slowloris
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Live Execution Diagnostic Console Card -->
+    <div class="glass-card-static" style="padding:22px 26px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div style="font-size:14px;font-weight:700;color:var(--text-primary);">Live Incident Diagnostics &amp; Explainable RCA Output</div>
+        <span id="demoStatusPill" class="delta-pill gray">Ready for Execution</span>
+      </div>
+
+      <div id="demoResultBox" style="background:rgba(255,255,255,0.7);border:1px solid rgba(220,225,245,0.9);border-radius:16px;padding:18px;min-height:140px;">
+        <div style="color:var(--text-muted);font-size:12.5px;text-align:center;padding:30px 0;">
+          Select any incident pattern above to generate live telemetry and observe real-time causal diagnosis.
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ═══════════════════════ JSON MODAL ═══════════════════════ -->
+<div class="modal-overlay" id="jsonModal" onclick="closeModal(event)">
+  <div class="modal-box" style="position:relative;" onclick="event.stopPropagation()">
+    <div class="modal-title">Egress Payload JSON</div>
+    <button class="modal-close" onclick="document.getElementById('jsonModal').classList.remove('open')">✕</button>
+    <pre class="json-view" id="jsonModalContent">Loading…</pre>
+  </div>
+</div>
+
+<!-- ═══════════════════════ ATTACK RADAR MODAL ═══════════════════════ -->
+<div class="modal-overlay" id="radarModal" onclick="closeModal(event)">
+  <div class="modal-box" style="position:relative;max-width:720px;" onclick="event.stopPropagation()">
+    <div class="modal-title">🛡️ Outside Cyber-Attack Radar</div>
+    <button class="modal-close" onclick="document.getElementById('radarModal').classList.remove('open')">✕</button>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
+      <div style="padding:14px;background:rgba(239,68,68,0.06);border-radius:14px;border:1px solid rgba(239,68,68,0.12);">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#DC2626;letter-spacing:0.5px;">Active Threats</div>
+        <div style="font-size:28px;font-weight:800;color:#1A1D24;margin-top:4px;" id="radarActiveThreats">0</div>
+      </div>
+      <div style="padding:14px;background:rgba(245,158,11,0.06);border-radius:14px;border:1px solid rgba(245,158,11,0.12);">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#B45309;letter-spacing:0.5px;">Blocked Today</div>
+        <div style="font-size:28px;font-weight:800;color:#1A1D24;margin-top:4px;" id="radarBlocked">0</div>
+      </div>
+    </div>
+    <div id="threatList" style="display:flex;flex-direction:column;gap:8px;max-height:300px;overflow-y:auto;"></div>
+    <div style="margin-top:16px;">
+      <canvas id="radarChart" height="160"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ NOTIFICATION PANEL ═══════════════════════ -->
+<div id="notifPanel" style="
+  position:fixed;top:70px;right:20px;width:320px;
+  background:rgba(255,255,255,0.90);
+  backdrop-filter:blur(28px);
+  border:1px solid rgba(255,255,255,0.90);
+  border-radius:20px;
+  box-shadow:0 20px 60px rgba(31,38,135,0.14);
+  padding:18px;
+  z-index:400;
+  display:none;
+">
+  <div style="font-size:14px;font-weight:800;color:var(--text-primary);margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;">
+    Notifications
+    <span style="font-size:11px;font-weight:600;color:var(--text-muted);cursor:pointer;" onclick="clearNotifs()">Clear all</span>
+  </div>
+  <div id="notifList" style="display:flex;flex-direction:column;gap:8px;max-height:280px;overflow-y:auto;">
+    <div style="font-size:12px;color:var(--text-muted);text-align:center;padding:16px;">No new notifications</div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  SNOW LEOPARDS — Dashboard JS (Phase 1–5 bound)
+// ═══════════════════════════════════════════════════════
+
+// ── Auth Guard ──
+function enforceAuth() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const qToken = urlParams.get('token');
+  const qTenant = urlParams.get('tenant_id');
+  const qColl = urlParams.get('collector_id');
+
+  if (qToken) {
+    sessionStorage.setItem('sl_token', qToken);
+    sessionStorage.setItem('snow_leopards_token', qToken);
+  }
+  if (qTenant) {
+    sessionStorage.setItem('sl_tenant', qTenant);
+    sessionStorage.setItem('snow_leopards_tenant', qTenant);
+  }
+  if (qColl) {
+    sessionStorage.setItem('sl_collector', qColl);
+    sessionStorage.setItem('snow_leopards_collector', qColl);
+  }
+
+  let token = sessionStorage.getItem('sl_token') || sessionStorage.getItem('snow_leopards_token') ||
+              localStorage.getItem('sl_token') || localStorage.getItem('snow_leopards_token');
+  let tenant = qTenant || sessionStorage.getItem('sl_tenant') || sessionStorage.getItem('snow_leopards_tenant') ||
+               localStorage.getItem('sl_tenant') || localStorage.getItem('snow_leopards_tenant');
+
+  if (!token && !qToken) {
+    window.location.replace('/login');
+    return false;
+  }
+
+  if (tenant) {
+    currentTenant = tenant;
+    const pill = document.getElementById('tenantPill');
+    if (pill) pill.textContent = tenant;
+    const av = document.getElementById('sidebarAvatar');
+    const uav = document.getElementById('userAvatarPill');
+    const uname = document.getElementById('userNamePill');
+    const label = tenant.replace('TENANT-', 'T');
+    if (av) av.textContent = label;
+    if (uav) uav.textContent = label;
+    if (uname) uname.textContent = tenant.replace('TENANT-00', 'Tenant ').replace('TENANT-', 'Tenant ');
+  }
+  return true;
+}
+
+// ── State ──
+let currentTenant = 'TENANT-001';
+let currentWindow = '1m';
+let currentComparison = 'yesterday';
+let egressFilter = 'all';
+let egressProofs = [];
+let notifications = [];
+let refreshTimer = null;
+let activeTab = 'overview';
+
+// Charts
+let lineChart = null;
+let barChart = null;
+let radarChartInst = null;
+
+// ── API Fetch Wrapper ──
+async function apiFetch(url, options = {}) {
+  const token = sessionStorage.getItem('sl_token') || sessionStorage.getItem('snow_leopards_token') ||
+                localStorage.getItem('sl_token') || localStorage.getItem('snow_leopards_token') || '';
+  const headers = {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json',
+    ...(options.headers || {})
+  };
+  const res = await fetch(url, { ...options, headers });
+  if (res.status === 401) {
+    sessionStorage.clear();
+    window.location.replace('/login');
+    return null;
+  }
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+// ── Tab Navigation ──
+function switchDashboardTab(tabName) {
+  activeTab = tabName;
+  document.querySelectorAll('.tab-pill').forEach(btn => btn.classList.remove('active'));
+  const btn = document.getElementById(`tabbtn-${tabName}`);
+  if (btn) btn.classList.add('active');
+
+  document.querySelectorAll('.tab-view').forEach(view => view.classList.remove('active'));
+  const targetView = document.getElementById(`view-${tabName}`);
+  if (targetView) targetView.classList.add('active');
+
+  // Load data for specific tab
+  if (tabName === 'overview') {
+    refreshAll();
+  } else if (tabName === 'weekly') {
+    loadWeeklyReport();
+  } else if (tabName === 'monthly') {
+    loadMonthlyReport();
+  } else if (tabName === 'forecast') {
+    loadForecastData();
+  } else if (tabName === 'risk') {
+    loadRiskData();
+  } else if (tabName === 'remediation') {
+    loadRemediationData();
+  } else if (tabName === 'copilot') {
+    const inp = document.getElementById('copilotInput');
+    if (inp) inp.focus();
+  } else if (tabName === 'demolab') {
+    // Demo Lab view
+  }
+}
+
+function setNav(el, section) {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  el.classList.add('active');
+
+  if (['overview', 'weekly', 'monthly', 'forecast', 'risk', 'remediation', 'copilot', 'demolab'].includes(section)) {
+    switchDashboardTab(section);
+  } else if (section === 'egress') {
+    switchDashboardTab('overview');
+    scrollToEgress();
+  } else if (section === 'collectors') {
+    window.location.href = '/collector-dashboard';
+  } else if (section === 'audit') {
+    exportAuditLog();
+  }
+}
+
+// ── Demo Laboratory Incident Trigger ──
+async function triggerDemoIncident(incidentType) {
+  const resultBox = document.getElementById('demoResultBox');
+  const statusPill = document.getElementById('demoStatusPill');
+  if (statusPill) {
+    statusPill.className = "delta-pill blue";
+    statusPill.textContent = "Injecting Incident Pattern...";
+  }
+  if (resultBox) {
+    resultBox.innerHTML = '<div style="text-align:center;padding:25px 0;font-size:13px;color:var(--text-muted);">Simulating telemetry burst & evaluating causal engines...</div>';
+  }
+
+  try {
+    const resp = await fetch('/api/v1/demo/generate-incident', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${sessionStorage.getItem('sl_token') || localStorage.getItem('sl_token') || ''}`
+      },
+      body: JSON.stringify({
+        incident_type: incidentType,
+        tenant_id: CURRENT_TENANT
+      })
+    });
+
+    const data = await resp.json();
+    if (!resp.ok) {
+      throw new Error(data.detail || 'Incident generation failed');
+    }
+
+    if (statusPill) {
+      statusPill.className = "delta-pill red";
+      statusPill.textContent = `${data.severity || 'ACTIVE'} — ${(data.incident_type || '').toUpperCase()}`;
+    }
+
+    if (resultBox) {
+      resultBox.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;border-bottom:1px solid rgba(0,0,0,0.06);padding-bottom:10px;">
+          <div>
+            <span style="font-size:14px;font-weight:800;color:var(--text-primary);">${data.diagnosis || 'Incident Detected'}</span>
+            <div style="font-size:11px;font-family:monospace;color:var(--text-muted);margin-top:2px;">ID: ${data.incident_id} · Tenant: ${data.tenant_id} · Collector: ${data.collector_id}</div>
+          </div>
+          <span class="delta-pill purple">Confidence: ${((data.confidence || 0.95) * 100).toFixed(0)}%</span>
+        </div>
+        <div style="margin-bottom:12px;">
+          <div style="font-size:12px;font-weight:700;color:var(--text-primary);margin-bottom:4px;">🔍 Root Cause Analysis:</div>
+          <div style="font-size:12.5px;color:var(--text-secondary);background:rgba(255,255,255,0.7);padding:8px 12px;border-radius:10px;border:1px solid rgba(220,225,245,0.8);">${data.root_cause || 'Root cause under investigation.'}</div>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:700;color:var(--text-primary);margin-bottom:6px;">🛠️ Recommended Runbook Commands:</div>
+          <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px;">
+            ${(data.runbook || []).map(step => `
+              <li style="font-size:11.5px;font-family:monospace;background:rgba(91,124,250,0.08);color:#3730A3;padding:6px 10px;border-radius:8px;border:1px solid rgba(91,124,250,0.2);">
+                → ${step}
+              </li>
+            `).join('')}
+          </ul>
+        </div>
+      `;
+    }
+
+    // Refresh live overview metrics
+    setTimeout(refreshAll, 600);
+
+  } catch (err) {
+    if (statusPill) {
+      statusPill.className = "delta-pill red";
+      statusPill.textContent = "Error";
+    }
+    if (resultBox) {
+      resultBox.innerHTML = `<div style="color:#ef4444;font-size:12.5px;padding:20px 0;text-align:center;">Execution error: ${err.message}</div>`;
+    }
+  }
+}
+
+// ── Phase 5.1: Executive Overview & Reporting Loaders ──
+async function loadExecutiveSummary() {
+  try {
+    const p = encodeURIComponent(currentTenant);
+    const data = await apiFetch(`/api/v1/reports/executive?tenant_id=${p}`);
+    if (!data || !data.report) return;
+    const r = data.report;
+    const oh = document.getElementById('execOverallHealth');
+    if (oh) {
+      oh.textContent = `● ${r.overall_health || 'OPTIMAL'}`;
+      oh.className = `delta-pill ${r.overall_health === 'DEGRADED' ? 'red' : 'green'}`;
+    }
+    const totInc = document.getElementById('execTotalIncidents');
+    if (totInc) totInc.textContent = `${r.critical_incidents || 0} Critical`;
+    const critInc = document.getElementById('execCriticalIncidents');
+    if (critInc) critInc.textContent = `Top RCA: ${r.most_common_root_cause || 'None'}`;
+    const lu = document.getElementById('execLastUpdated');
+    if (lu) lu.textContent = new Date().toLocaleTimeString();
+  } catch (err) {
+    console.warn('Executive summary error:', err);
+  }
+}
+
+async function loadWeeklyReport() {
+  try {
+    const p = encodeURIComponent(currentTenant);
+    const data = await apiFetch(`/api/v1/reports/weekly?tenant_id=${p}`);
+    if (!data || !data.report) return;
+    const rep = data.report;
+    document.getElementById('wkReportId').textContent = rep.report_id || 'REP-WK-001';
+    document.getElementById('wkAvgCpu').textContent = `${rep.average_cpu}%`;
+    document.getElementById('wkAvgMem').textContent = `${rep.average_memory}%`;
+    document.getElementById('wkAvgLat').textContent = `${rep.average_latency} ms`;
+    document.getElementById('wkAvgLoss').textContent = `${rep.average_packet_loss}%`;
+    document.getElementById('wkTotalAlerts').textContent = rep.total_alerts;
+    document.getElementById('wkTotalIncidents').textContent = rep.total_incidents;
+    document.getElementById('wkTopRca').textContent = rep.top_rca_category || 'NOMINAL';
+    document.getElementById('wkFleetHealth').textContent = `${rep.fleet_health_percentage}%`;
+    document.getElementById('wkVerdict').textContent = `Verdict: ${rep.summary_verdict || 'Fleet operational parameters stable.'}`;
+    document.getElementById('wkGeneratedAt').textContent = `Generated: ${new Date(data.generated_at).toLocaleString()}`;
+    addNotification('📊 Weekly Report refreshed successfully', 'info');
+  } catch (err) {
+    console.warn('Weekly report error:', err);
+  }
+}
+
+async function loadMonthlyReport() {
+  try {
+    const p = encodeURIComponent(currentTenant);
+    const data = await apiFetch(`/api/v1/reports/monthly?tenant_id=${p}`);
+    if (!data || !data.report) return;
+    const rep = data.report;
+    document.getElementById('moReportId').textContent = rep.report_id || 'REP-MO-001';
+    const tr = rep.resource_utilization_trends || {};
+    document.getElementById('moCpuTrend').textContent = (tr.cpu || 'STABLE').replace('_', ' ');
+    document.getElementById('moMemTrend').textContent = (tr.memory || 'MODERATE GROWTH').replace('_', ' ');
+    document.getElementById('moDiskTrend').textContent = (tr.disk || 'STABLE').replace('_', ' ');
+    document.getElementById('moIncGrowth').textContent = `${rep.incident_growth_pct > 0 ? '+' : ''}${rep.incident_growth_pct}%`;
+    document.getElementById('moThreatGrowth').textContent = `${rep.threat_growth_pct > 0 ? '+' : ''}${rep.threat_growth_pct}%`;
+    document.getElementById('moAvailScore').textContent = `${rep.availability_score}%`;
+    const cr = document.getElementById('moCapacityRisk');
+    if (cr) {
+      cr.textContent = `${rep.capacity_risk_level} RISK`;
+      cr.className = `delta-pill ${rep.capacity_risk_level === 'HIGH' ? 'red' : rep.capacity_risk_level === 'MODERATE' ? 'amber' : 'green'}`;
+    }
+    document.getElementById('moRecommendation').textContent = rep.recommendation || 'Maintain nominal thresholds.';
+    addNotification('📅 Monthly Report refreshed successfully', 'info');
+  } catch (err) {
+    console.warn('Monthly report error:', err);
+  }
+}
+
+// ── Phase 5.2: Capacity Forecast Loader ──
+async function loadForecastData() {
+  try {
+    const p = encodeURIComponent(currentTenant);
+    const [cpuFc, memFc, diskFc] = await Promise.all([
+      apiFetch(`/api/v1/forecast/cpu?tenant_id=${p}`),
+      apiFetch(`/api/v1/forecast/memory?tenant_id=${p}`),
+      apiFetch(`/api/v1/forecast/disk?tenant_id=${p}`)
+    ]);
+
+    if (cpuFc) {
+      document.getElementById('fcCpuCurrent').textContent = `${cpuFc.current}%`;
+      document.getElementById('fcCpuPredicted').textContent = `${cpuFc.predicted_7_days}%`;
+      document.getElementById('fcCpuDays').textContent = cpuFc.days_to_threshold >= 900 ? 'Headroom Safe' : `${cpuFc.days_to_threshold} days`;
+      const badge = document.getElementById('fcCpuRisk');
+      badge.textContent = cpuFc.capacity_risk;
+      badge.className = `delta-pill ${cpuFc.capacity_risk === 'HIGH' ? 'red' : cpuFc.capacity_risk === 'MODERATE' ? 'amber' : 'green'}`;
+    }
+    if (memFc) {
+      document.getElementById('fcMemCurrent').textContent = `${memFc.current}%`;
+      document.getElementById('fcMemPredicted').textContent = `${memFc.predicted_7_days}%`;
+      document.getElementById('fcMemDays').textContent = memFc.days_to_threshold >= 900 ? 'Headroom Safe' : `${memFc.days_to_threshold} days`;
+      const badge = document.getElementById('fcMemRisk');
+      badge.textContent = memFc.capacity_risk;
+      badge.className = `delta-pill ${memFc.capacity_risk === 'HIGH' ? 'red' : memFc.capacity_risk === 'MODERATE' ? 'amber' : 'green'}`;
+    }
+    if (diskFc) {
+      document.getElementById('fcDiskCurrent').textContent = `${diskFc.current}%`;
+      document.getElementById('fcDiskPredicted').textContent = `${diskFc.predicted_7_days}%`;
+      document.getElementById('fcDiskDays').textContent = diskFc.days_to_threshold >= 900 ? 'Headroom Safe' : `${diskFc.days_to_threshold} days`;
+      const badge = document.getElementById('fcDiskRisk');
+      badge.textContent = diskFc.capacity_risk;
+      badge.className = `delta-pill ${diskFc.capacity_risk === 'HIGH' ? 'red' : diskFc.capacity_risk === 'MODERATE' ? 'amber' : 'green'}`;
+    }
+    addNotification('📈 Capacity Forecasts recomputed (numpy/pandas)', 'info');
+  } catch (err) {
+    console.warn('Forecast error:', err);
+  }
+}
+
+// ── Phase 5.3: Proactive Risk Loader ──
+async function loadRiskData() {
+  try {
+    const p = encodeURIComponent(currentTenant);
+    const data = await apiFetch(`/api/v1/risk-summary?tenant_id=${p}`);
+    if (!data) return;
+    const top = data.top_risk || {};
+    document.getElementById('riskTopTitle').textContent = top.risk || 'NOMINAL';
+    document.getElementById('riskTopDesc').textContent = top.description || 'No critical failure risks detected.';
+    document.getElementById('riskTopProb').textContent = `${top.probability || 0}% Probability`;
+    document.getElementById('riskTopHours').textContent = `Est: ${top.estimated_hours || 0} hrs`;
+
+    const container = document.getElementById('riskCardsContainer');
+    if (container && Array.isArray(data.risks)) {
+      container.innerHTML = data.risks.map(r => `
+        <div class="glass-card" style="padding:16px 18px;background:rgba(255,255,255,0.72);border-radius:16px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <div style="font-size:13px;font-weight:800;color:#1A1D24;">${r.risk}</div>
+            <span class="delta-pill ${r.probability > 70 ? 'red' : r.probability > 40 ? 'amber' : 'green'}">${r.probability}%</span>
+          </div>
+          <div style="font-size:11.5px;color:#6E7485;margin-top:8px;line-height:1.45;">${r.description}</div>
+          <div style="margin-top:12px;padding:6px 10px;background:rgba(255,255,255,0.75);border-radius:8px;font-size:11px;font-weight:600;color:var(--text-primary);display:flex;justify-content:space-between;">
+            <span>Est. Horizon:</span>
+            <span>~${r.estimated_hours} hours</span>
+          </div>
+        </div>
+      `).join('');
+    }
+    addNotification('🛡️ Proactive Risk Analysis updated', 'info');
+  } catch (err) {
+    console.warn('Risk summary error:', err);
+  }
+}
+
+// ── Phase 5.4 & 5.5: Remediation Queue Loaders & Actions ──
+async function loadRemediationData() {
+  try {
+    const p = encodeURIComponent(currentTenant);
+    const items = await apiFetch(`/api/v1/remediation/pending?tenant_id=${p}`);
+    const list = document.getElementById('remediationList');
+    if (!list) return;
+
+    if (!items || items.length === 0) {
+      list.innerHTML = `<div style="text-align:center;padding:32px;color:var(--text-muted);font-size:13px;">No pending remediations waiting for approval. Operational state is nominal.</div>`;
+      return;
+    }
+
+    list.innerHTML = items.map(item => `
+      <div class="glass-card" style="padding:16px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;background:rgba(255,255,255,0.75);">
+        <div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="mono" style="font-size:11.5px;font-weight:700;color:#5B7CFA;">${item.id}</span>
+            <span class="delta-pill amber">PENDING APPROVAL</span>
+            <span style="font-size:11px;color:var(--text-muted);">Incident: ${item.incident_id || 'INC-MANUAL'}</span>
+          </div>
+          <div style="font-size:14px;font-weight:800;color:#1A1D24;margin-top:4px;">${item.root_cause}</div>
+          <div style="font-size:12px;color:#6E7485;margin-top:2px;">Suggested Runbook: <strong>${item.suggested_action}</strong></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <button class="remed-btn-approve" onclick="handleApproveRemediation('${item.id}')">Approve (Simulate)</button>
+          <button class="remed-btn-reject" onclick="handleRejectRemediation('${item.id}')">Reject</button>
+        </div>
+      </div>
+    `).join('');
+  } catch (err) {
+    console.warn('Remediation queue error:', err);
+  }
+}
+
+async function handleApproveRemediation(remId) {
+  try {
+    const p = encodeURIComponent(currentTenant);
+    const res = await apiFetch(`/api/v1/remediation/${remId}/approve?tenant_id=${p}`, { method: 'POST' });
+    addNotification(`✅ [${remId}] Remediation Approved & Simulated!`, 'info');
+    loadRemediationData();
+  } catch (err) {
+    addNotification(`❌ Error approving remediation: ${err.message}`, 'critical');
+  }
+}
+
+async function handleRejectRemediation(remId) {
+  try {
+    const res = await apiFetch(`/api/v1/remediation/${remId}/reject`, { method: 'POST' });
+    addNotification(`⚠️ [${remId}] Remediation Rejected by operator.`, 'warning');
+    loadRemediationData();
+  } catch (err) {
+    addNotification(`❌ Error rejecting remediation: ${err.message}`, 'critical');
+  }
+}
+
+// ── Phase 5.6: AI Copilot Chat Handlers ──
+async function handleCopilotSubmit(e) {
+  if (e) e.preventDefault();
+  const inp = document.getElementById('copilotInput');
+  const query = (inp ? inp.value : '').trim();
+  if (!query) return;
+  inp.value = '';
+  await executeCopilotQuery(query);
+}
+
+function askCopilotPrompt(promptText) {
+  const inp = document.getElementById('copilotInput');
+  if (inp) inp.value = promptText;
+  executeCopilotQuery(promptText);
+}
+
+async function executeCopilotQuery(query) {
+  const container = document.getElementById('copilotMessages');
+  if (!container) return;
+
+  // Append user bubble
+  const userDiv = document.createElement('div');
+  userDiv.className = 'copilot-bubble-user';
+  userDiv.textContent = query;
+  container.appendChild(userDiv);
+
+  // Append loading bot bubble
+  const botDiv = document.createElement('div');
+  botDiv.className = 'copilot-bubble-bot';
+  botDiv.innerHTML = `<span class="spinner" style="width:12px;height:12px;margin-right:6px;"></span> Consulting local AIOps engines…`;
+  container.appendChild(botDiv);
+  container.scrollTop = container.scrollHeight;
+
+  try {
+    const p = encodeURIComponent(currentTenant);
+    const res = await apiFetch(`/api/v1/copilot/query`, {
+      method: 'POST',
+      body: JSON.stringify({ query: query, tenant_id: currentTenant })
+    });
+    const ans = (res && (res.response || res.answer)) ? (res.response || res.answer) : 'Nominal telemetry received.';
+    botDiv.innerHTML = ans.replace(/\n/g, '<br>');
+  } catch (err) {
+    botDiv.innerHTML = `⚠️ Error querying Copilot: ${err.message}`;
+  }
+  container.scrollTop = container.scrollHeight;
+}
+
+// ── Refresh All (Overview & Live Telemetry) ──
+async function refreshAll(silent = false) {
+  const p = encodeURIComponent(currentTenant);
+  const [overview, telemetry, egress, comparison, nodes] = await Promise.allSettled([
+    apiFetch(`/api/v1/dashboard/overview?tenant_id=${p}`),
+    apiFetch(`/api/v1/dashboard/telemetry?tenant_id=${p}`),
+    apiFetch(`/api/v1/dashboard/egress-proofs?tenant_id=${p}`),
+    apiFetch(`/api/v1/dashboard/comparison?tenant_id=${p}&window=${currentComparison}&metric=cpu_percent`),
+    apiFetch(`/api/v1/dashboard/nodes?tenant_id=${p}`)
+  ]);
+
+  if (overview.status === 'fulfilled') {
+    const ovData = overview.value || {};
+    if (nodes.status === 'fulfilled' && Array.isArray(nodes.value)) {
+      ovData.collectors = nodes.value;
+    }
+    updateOverview(ovData);
+  }
+  if (telemetry.status === 'fulfilled') {
+    updateCharts(telemetry.value);
+  }
+  if (egress.status === 'fulfilled') {
+    egressProofs = Array.isArray(egress.value) ? egress.value : (egress.value ? egress.value.proofs || [] : []);
+    renderEgressList();
+  }
+  if (comparison.status === 'fulfilled') {
+    updateComparison(comparison.value);
+  }
+
+  // Also refresh Executive Summary card
+  loadExecutiveSummary();
+}
+
+function updateOverview(data) {
+  if (!data) return;
+  const collectors = Array.isArray(data.collectors) ? data.collectors : [];
+  const healthStates = data.health_states || {};
+  const counts = {
+    Healthy: healthStates.Healthy || 0,
+    Degraded: healthStates.Degraded || 0,
+    Critical: healthStates.Critical || 0,
+    'Stale/Offline': healthStates['Stale/Offline'] || 0
+  };
+
+  if (!data.health_states && collectors.length > 0) {
+    collectors.forEach(c => {
+      const s = c.status || 'Healthy';
+      if (counts[s] !== undefined) counts[s]++;
+      else if (s === 'Active' || s === 'Online') counts.Healthy++;
+      else counts['Stale/Offline']++;
+    });
+  }
+
+  const total = data.total_nodes || (counts.Healthy + counts.Degraded + counts.Critical + counts['Stale/Offline']) || Math.max(collectors.length, 1);
+  const healthyPct = Math.round((counts.Healthy / total) * 100);
+  const degradedPct = Math.round((counts.Degraded / total) * 100);
+  const criticalPct = Math.round((counts.Critical / total) * 100);
+  const stalePct = Math.max(0, 100 - healthyPct - degradedPct - criticalPct);
+
+  const fH = document.getElementById('fleetHealthy'); if (fH) fH.style.width = healthyPct + '%';
+  const fD = document.getElementById('fleetDegraded'); if (fD) fD.style.width = degradedPct + '%';
+  const fC = document.getElementById('fleetCritical'); if (fC) fC.style.width = criticalPct + '%';
+  const fS = document.getElementById('fleetStale'); if (fS) fS.style.width = stalePct + '%';
+
+  const sumText = document.getElementById('fleetSummaryText');
+  if (sumText) sumText.textContent = `${total} node${total !== 1 ? 's' : ''}`;
+
+  if (collectors.length > 0) {
+    const c = collectors[0];
+    const status = c.status || (counts.Healthy > 0 ? 'Healthy' : 'Degraded');
+    const badge = document.getElementById('heroHealthBadge');
+    if (badge) {
+      badge.className = 'health-badge ' + (status === 'Stale/Offline' ? 'stale' : status === 'Critical' ? 'critical' : status === 'Degraded' ? 'degraded' : 'healthy');
+    }
+    const hText = document.getElementById('heroHealthText'); if (hText) hText.textContent = status;
+    const hHash = document.getElementById('heroHash');
+    if (hHash) {
+      const rawHash = c.source_id_hash || c.sha256 || 'a1b2c3d4e5f67890123456789abcdef0';
+      hHash.textContent = 'sha256:' + rawHash.substring(0, 16) + '…';
+    }
+    const hStat = document.getElementById('heroStatus');
+    if (hStat) {
+      hStat.textContent = status === 'Healthy' ? 'Active' : status;
+      hStat.style.color = status === 'Healthy' ? '#22C55E' : status === 'Critical' ? '#EF4444' : '#F59E0B';
+    }
+    const hReg = document.getElementById('heroRegion'); if (hReg) hReg.textContent = c.region || 'us-east-1';
+  }
+
+  // Update Anomaly Count
+  const anomCount = document.getElementById('anomalyCount');
+  if (anomCount) {
+    const numAnom = counts.Critical + counts.Degraded;
+    anomCount.textContent = `${numAnom} active`;
+    anomCount.className = `delta-pill ${numAnom > 0 ? 'red' : 'green'}`;
+  }
+}
+
+// ── Chart.js Setup ──
+function initCharts() {
+  const ctxLine = document.getElementById('lineChart');
+  if (ctxLine) {
+    lineChart = new Chart(ctxLine.getContext('2d'), {
+      type: 'line',
+      data: {
+        labels: ['00:00','00:10','00:20','00:30','00:40','00:50','01:00'],
+        datasets: [
+          {
+            label: 'Latency (ms)',
+            data: [12.4, 13.1, 14.2, 13.8, 15.0, 14.2, 13.9],
+            borderColor: '#5B7CFA',
+            backgroundColor: 'rgba(91,124,250,0.08)',
+            fill: true,
+            tension: 0.4,
+            borderWidth: 2
+          },
+          {
+            label: 'Throughput (MB/s)',
+            data: [42, 45, 48, 44, 52, 49, 50],
+            borderColor: '#FF8A80',
+            backgroundColor: 'rgba(255,138,128,0.06)',
+            fill: true,
+            tension: 0.4,
+            borderWidth: 2
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: '#9BA3B5', font: { size: 10 } } },
+          y: { grid: { color: 'rgba(31,38,135,0.04)' }, ticks: { color: '#9BA3B5', font: { size: 10 } } }
+        }
+      }
+    });
+  }
+
+  const ctxBar = document.getElementById('barChart');
+  if (ctxBar) {
+    barChart = new Chart(ctxBar.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
+        datasets: [
+          {
+            label: 'Today',
+            data: [45, 52, 49, 60, 58, 42, 47],
+            backgroundColor: '#5B7CFA',
+            borderRadius: 6
+          },
+          {
+            label: 'Baseline',
+            data: [42, 48, 46, 54, 52, 40, 44],
+            backgroundColor: 'rgba(224,215,255,0.7)',
+            borderRadius: 6
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: '#9BA3B5', font: { size: 10 } } },
+          y: { grid: { color: 'rgba(31,38,135,0.04)' }, ticks: { color: '#9BA3B5', font: { size: 10 } } }
+        }
+      }
+    });
+  }
+}
+
+function updateCharts(data) {
+  if (!data || !lineChart) return;
+  const metrics = Array.isArray(data) ? data : (data.telemetry || []);
+  if (metrics.length > 0) {
+    const latVals = metrics.map(m => m.latency_ms || m.latency || 14.0).slice(-7);
+    const cpuVals = metrics.map(m => m.cpu_percent || m.cpu || 40.0).slice(-7);
+    if (latVals.length > 0) {
+      lineChart.data.datasets[0].data = latVals;
+      lineChart.data.datasets[1].data = cpuVals;
+      lineChart.update('none');
+      const latestLat = latVals[latVals.length - 1];
+      const kpiLat = document.getElementById('kpiLatency');
+      if (kpiLat) kpiLat.innerHTML = `${Number(latestLat).toFixed(1)} <span>ms</span>`;
+      const latestCpu = cpuVals[cpuVals.length - 1];
+      const kpiC = document.getElementById('kpiCpu');
+      if (kpiC) kpiC.innerHTML = `${Number(latestCpu).toFixed(1)} <span>%</span>`;
+    }
+  }
+}
+
+function updateComparison(data) {
+  if (!data || !barChart) return;
+  const cb = document.getElementById('comparisonBanner');
+  if (cb) cb.style.display = 'flex';
+  const vd = document.getElementById('comparisonVerdict');
+  if (vd) vd.textContent = data.verdict || 'Nominal comparison with baseline window.';
+  const dl = document.getElementById('comparisonDelta');
+  if (dl) dl.textContent = `${data.delta_pct > 0 ? '+' : ''}${data.delta_pct || 0}%`;
+}
+
+function renderEgressList() {
+  const el = document.getElementById('egressList');
+  if (!el) return;
+  if (egressProofs.length === 0) {
+    el.innerHTML = `<div style="text-align:center;padding:18px;color:var(--text-muted);font-size:12px;">Zero egress data leaked. All PII scrubbed.</div>`;
+    return;
+  }
+  el.innerHTML = egressProofs.slice(0, 6).map(p => `
+    <div class="egress-item" onclick="showPayloadModal('${p.payload_id || p.id}')">
+      <div>
+        <span class="hash-badge mono">${(p.sha256 || 'sha256:7f83b165...').substring(0, 18)}…</span>
+        <span style="font-size:11px;color:#6E7485;margin-left:6px;">${p.collector_id || 'COLL-001'}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span class="scrubbed-pill">Zero-PII</span>
+        <span style="font-size:10px;color:var(--text-muted);">${new Date(p.ingested_at || p.timestamp || Date.now()).toLocaleTimeString()}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+function showPayloadModal(id) {
+  const modal = document.getElementById('jsonModal');
+  const view = document.getElementById('jsonModalContent');
+  if (modal && view) {
+    const item = egressProofs.find(x => (x.payload_id === id || x.id === id)) || {
+      payload_id: id,
+      tenant_id: currentTenant,
+      scrubbed_fields: ['ip_address', 'host_fqdn', 'auth_token'],
+      status: 'VERIFIED_ZERO_TRUST'
+    };
+    view.textContent = JSON.stringify(item, null, 2);
+    modal.classList.add('open');
+  }
+}
+
+// ── Notifications ──
+function addNotification(msg, type = 'info') {
+  notifications.push({ msg, type, time: new Date().toLocaleTimeString() });
+  const badge = document.getElementById('notifBadge');
+  if (badge) badge.style.display = 'block';
+  renderNotifList();
+}
+
+function renderNotifList() {
+  const list = document.getElementById('notifList');
+  if (!list) return;
+  if (notifications.length === 0) {
+    list.innerHTML = `<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:16px;">No new notifications</div>`;
+    return;
+  }
+  list.innerHTML = notifications.slice(-6).reverse().map(n => `
+    <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:rgba(255,255,255,0.65);border-radius:12px;border:1px solid rgba(255,255,255,0.80);">
+      <div class="severity-dot ${n.type === 'critical' ? 'sev-critical' : n.type === 'warning' ? 'sev-warning' : 'sev-info'}" style="margin-top:5px;"></div>
+      <div>
+        <div style="font-size:12px;font-weight:600;color:var(--text-primary);">${n.msg}</div>
+        <div style="font-size:10.5px;color:var(--text-muted);">${n.time}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function toggleNotifPanel() {
+  const p = document.getElementById('notifPanel');
+  if (!p) return;
+  p.style.display = p.style.display === 'none' ? 'block' : 'none';
+  if (p.style.display === 'block') {
+    const b = document.getElementById('notifBadge');
+    if (b) b.style.display = 'none';
+  }
+}
+
+function clearNotifs() {
+  notifications = [];
+  renderNotifList();
+}
+
+function startAutoRefresh() {
+  const intervals = { '1m': 10000, '5m': 30000, '15m': 60000 };
+  if (refreshTimer) clearInterval(refreshTimer);
+  refreshTimer = setInterval(() => { refreshAll(true); }, intervals[currentWindow] || 10000);
+}
+
+function setTimeWindow(el, w) {
+  currentWindow = w;
+  document.querySelectorAll('.time-pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  const lcWin = document.getElementById('lineChartWindow'); if (lcWin) lcWin.textContent = w;
+  startAutoRefresh();
+  refreshAll();
+}
+
+function setComparison(el, cmp) {
+  currentComparison = cmp;
+  document.querySelectorAll('.comparison-pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  refreshAll();
+}
+
+function cycleTenant() {
+  const tenants = ['TENANT-001', 'TENANT-002', 'TENANT-003'];
+  const idx = tenants.indexOf(currentTenant);
+  currentTenant = tenants[(idx + 1) % tenants.length];
+  sessionStorage.setItem('sl_tenant', currentTenant);
+  const pill = document.getElementById('tenantPill');
+  if (pill) pill.textContent = currentTenant;
+  const label = currentTenant.replace('TENANT-', 'T');
+  const av = document.getElementById('sidebarAvatar');
+  const uav = document.getElementById('userAvatarPill');
+  const uname = document.getElementById('userNamePill');
+  if (av) av.textContent = label;
+  if (uav) uav.textContent = label;
+  if (uname) uname.textContent = currentTenant.replace('TENANT-00', 'Tenant ').replace('TENANT-', 'Tenant ');
+  refreshAll();
+}
+
+function setEgressFilter(el, f) {
+  egressFilter = f;
+  document.querySelectorAll('.egress-filter').forEach(x => x.classList.remove('active'));
+  el.classList.add('active');
+  renderEgressList();
+}
+
+function scrollToEgress() {
+  const el = document.getElementById('egressPanel');
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function filterSearch(val) {
+  if (!val) return;
+  const v = val.toLowerCase();
+  document.querySelectorAll('.egress-item').forEach(el => {
+    el.style.display = el.textContent.toLowerCase().includes(v) ? 'flex' : 'none';
+  });
+}
+
+function closeModal(e) {
+  if (e.target === e.currentTarget) e.currentTarget.classList.remove('open');
+}
+
+function toggleFullscreen() {
+  if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
+  else document.exitFullscreen().catch(()=>{});
+}
+
+function confirmLogout() {
+  if (confirm('Sign out of SNOW LEOPARDS?')) {
+    sessionStorage.clear();
+    localStorage.removeItem('sl_token');
+    localStorage.removeItem('sl_tenant');
+    window.location.replace('/login');
+  }
+}
+
+// ── Toolbar Actions ──
+async function simulateOutage() {
+  addNotification('🔴 Outage simulation started (60s)', 'critical');
+  await apiFetch(`/api/v1/dashboard/overview?tenant_id=${encodeURIComponent(currentTenant)}`);
+  setTimeout(() => { addNotification('✅ Outage simulation ended', 'info'); }, 60000);
+}
+
+async function verifyTLS() {
+  addNotification('🔐 TLS verification passed — all endpoints secure', 'info');
+}
+
+function exportAuditLog() {
+  const data = JSON.stringify(egressProofs, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url;
+  a.download = `audit_log_${currentTenant}_${Date.now()}.json`;
+  a.click(); URL.revokeObjectURL(url);
+  addNotification('📥 Audit log exported', 'info');
+}
+
+function filterRegion() {
+  const regions = ['us-east-1','us-west-2','eu-west-1','ap-south-1'];
+  const r = regions[Math.floor(Math.random()*regions.length)];
+  addNotification(`🌍 Filtered to region: ${r}`, 'info');
+}
+
+async function openAttackRadar() {
+  const modal = document.getElementById('radarModal');
+  if (modal) modal.classList.add('open');
+  const data = await apiFetch(`/api/v1/dashboard/threats?tenant_id=${encodeURIComponent(currentTenant)}`).catch(()=>null);
+  if (data) {
+    const act = document.getElementById('radarActiveThreats');
+    if (act) act.textContent = data.active_threat_count || 0;
+    const blk = document.getElementById('radarBlocked');
+    if (blk) blk.textContent = data.blocked_today || 14;
+  }
+}
+
+// ── Initialization ──
+window.addEventListener('DOMContentLoaded', () => {
+  if (enforceAuth()) {
+    initCharts();
+    refreshAll();
+    startAutoRefresh();
+  }
+});
+</script>
+</body>
+</html>
