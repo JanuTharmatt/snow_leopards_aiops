@@ -223,33 +223,33 @@
     <!-- CPU -->
     <div class="glass-card kpi-mini" style="--kpi-glow:rgba(255,216,204,0.6);">
       <div class="kpi-label">CPU Usage</div>
-      <div class="kpi-value-lg tabular" id="kpiCpu">42.8 <span>%</span></div>
-      <div class="progress-wrap"><div class="progress-fill" id="cpuBar" style="width:42.8%;background:linear-gradient(90deg,#FF8A80,#FF5252);"></div></div>
-      <span class="delta-pill amber" id="kpiCpuDelta">▲ 3.1%</span>
+      <div class="kpi-value-lg tabular" id="kpiCpu">-- <span>%</span></div>
+      <div class="progress-wrap"><div class="progress-fill" id="cpuBar" style="width:0%;background:linear-gradient(90deg,#FF8A80,#FF5252);"></div></div>
+      <span class="delta-pill green" id="kpiCpuDelta">Real-time Stream</span>
     </div>
 
     <!-- RAM -->
     <div class="glass-card kpi-mini">
       <div class="kpi-label">Memory (RAM)</div>
-      <div class="kpi-value-lg tabular" id="kpiRam">61.4 <span>%</span></div>
-      <div class="progress-wrap"><div class="progress-fill" id="ramBar" style="width:61.4%;background:linear-gradient(90deg,#5B7CFA,#6C8EEF);"></div></div>
-      <span class="delta-pill blue" id="kpiRamDelta">▲ 1.8%</span>
+      <div class="kpi-value-lg tabular" id="kpiRam">-- <span>%</span></div>
+      <div class="progress-wrap"><div class="progress-fill" id="ramBar" style="width:0%;background:linear-gradient(90deg,#5B7CFA,#6C8EEF);"></div></div>
+      <span class="delta-pill blue" id="kpiRamDelta">Real-time Stream</span>
     </div>
 
     <!-- Network -->
     <div class="glass-card kpi-mini">
       <div class="kpi-label">Network Throughput</div>
-      <div class="kpi-value-lg tabular" id="kpiNetwork">48.2 <span>Mbps</span></div>
-      <div class="progress-wrap"><div class="progress-fill" id="netBar" style="width:48%;background:linear-gradient(90deg,#22C55E,#16A34A);"></div></div>
-      <span class="delta-pill green" id="kpiNetDelta">▼ 0.4%</span>
+      <div class="kpi-value-lg tabular" id="kpiNetwork">-- <span>Mbps</span></div>
+      <div class="progress-wrap"><div class="progress-fill" id="netBar" style="width:0%;background:linear-gradient(90deg,#22C55E,#16A34A);"></div></div>
+      <span class="delta-pill green" id="kpiNetDelta">Real-time Stream</span>
     </div>
 
     <!-- Processes -->
     <div class="glass-card kpi-mini">
       <div class="kpi-label">Active Processes</div>
-      <div class="kpi-value-lg tabular" id="kpiProcs">247 <span>proc</span></div>
-      <div class="progress-wrap"><div class="progress-fill" id="procBar" style="width:60%;background:linear-gradient(90deg,#E0D7FF,#9b8ef5);"></div></div>
-      <span class="delta-pill blue">stable</span>
+      <div class="kpi-value-lg tabular" id="kpiProcs">-- <span>proc</span></div>
+      <div class="progress-wrap"><div class="progress-fill" id="procBar" style="width:0%;background:linear-gradient(90deg,#E0D7FF,#9b8ef5);"></div></div>
+      <span class="delta-pill blue">Active</span>
     </div>
 
     <!-- Egress Queue -->
@@ -462,16 +462,10 @@ function initCharts() {
   Chart.defaults.plugins.tooltip.padding = 12;
   Chart.defaults.plugins.tooltip.cornerRadius = 10;
 
-  const timeLabels = Array.from({length:MAX_POINTS},(_,i) => {
-    const d = new Date(Date.now() - (MAX_POINTS-1-i)*10000);
-    return `${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
-  });
-
-  // Initial fake data
-  cpuHistory = Array.from({length:MAX_POINTS},()=>+(Math.random()*25+30).toFixed(1));
-  ramHistory = Array.from({length:MAX_POINTS},()=>+(Math.random()*15+55).toFixed(1));
-  netHistory = Array.from({length:MAX_POINTS},()=>+(Math.random()*20+35).toFixed(1));
-  lossHistory = Array.from({length:MAX_POINTS},()=>+(Math.random()*0.05).toFixed(3));
+  cpuHistory = [];
+  ramHistory = [];
+  netHistory = [];
+  lossHistory = [];
 
   // CPU + RAM Line Chart
   const ctx1 = document.getElementById('cpuRamChart').getContext('2d');
@@ -483,10 +477,10 @@ function initCharts() {
   cpuRamChart = new Chart(ctx1, {
     type: 'line',
     data: {
-      labels: timeLabels,
+      labels: [],
       datasets: [
-        { label:'CPU %', data:[...cpuHistory], borderColor:'#FF8A80', backgroundColor:lgCpu, tension:0.42, fill:true, pointRadius:0, pointHoverRadius:5, pointHoverBackgroundColor:'#FF8A80', pointHoverBorderColor:'#fff', pointHoverBorderWidth:2.5, borderWidth:2.5 },
-        { label:'RAM %', data:[...ramHistory], borderColor:'#5B7CFA', backgroundColor:lgRam, tension:0.42, fill:true, pointRadius:0, pointHoverRadius:5, pointHoverBackgroundColor:'#5B7CFA', pointHoverBorderColor:'#fff', pointHoverBorderWidth:2.5, borderWidth:2.5 }
+        { label:'CPU %', data:[], borderColor:'#FF8A80', backgroundColor:lgCpu, tension:0.42, fill:true, pointRadius:0, pointHoverRadius:5, pointHoverBackgroundColor:'#FF8A80', pointHoverBorderColor:'#fff', pointHoverBorderWidth:2.5, borderWidth:2.5 },
+        { label:'RAM %', data:[], borderColor:'#5B7CFA', backgroundColor:lgRam, tension:0.42, fill:true, pointRadius:0, pointHoverRadius:5, pointHoverBackgroundColor:'#5B7CFA', pointHoverBorderColor:'#fff', pointHoverBorderWidth:2.5, borderWidth:2.5 }
       ]
     },
     options: {
@@ -505,10 +499,10 @@ function initCharts() {
   netChart = new Chart(ctx2, {
     type: 'bar',
     data: {
-      labels: timeLabels.filter((_,i)=>i%4===0),
+      labels: [],
       datasets: [
-        { label:'Throughput (Mbps)', data: netHistory.filter((_,i)=>i%4===0), backgroundColor:'rgba(34,197,94,0.65)', borderRadius:7, borderSkipped:false },
-        { label:'Packet Loss (%)', data: lossHistory.filter((_,i)=>i%4===0).map(v=>v*1000), backgroundColor:'rgba(255,216,204,0.65)', borderRadius:7, borderSkipped:false, borderColor:'rgba(255,138,128,0.5)', borderWidth:1 }
+        { label:'Throughput (Mbps)', data: [], backgroundColor:'rgba(34,197,94,0.65)', borderRadius:7, borderSkipped:false },
+        { label:'Packet Loss (%)', data: [], backgroundColor:'rgba(255,216,204,0.65)', borderRadius:7, borderSkipped:false, borderColor:'rgba(255,138,128,0.5)', borderWidth:1 }
       ]
     },
     options: {
@@ -543,7 +537,6 @@ async function refreshAll() {
     updateFromOverview(ov);
   }
 
-  updatePayloadPreview();
   updateTimestamp();
 }
 
@@ -552,21 +545,23 @@ function updateFromTelemetry(data) {
   const records = Array.isArray(data) ? data : (data.records || data.series || []);
   if (records.length === 0) return;
 
-  const last = records[records.length - 1];
-  let d = {};
-  if (last.payload_json) {
-    try {
-      d = JSON.parse(last.payload_json).data || {};
-    } catch(e) {}
-  } else {
-    d = last;
-  }
+  const recent = records.slice(-MAX_POINTS);
+  const timeLabels = recent.map(r => {
+    const t = new Date(r.event_time_utc || r.timestamp);
+    return isNaN(t.getTime()) ? '--:--' : t.toLocaleTimeString([], {minute:'2-digit', second:'2-digit'});
+  });
 
-  const cpu = +(d.cpu_percent !== undefined ? d.cpu_percent : (d.cpu !== undefined ? d.cpu : 42.8)).toFixed(1);
-  const ram = +(d.memory_percent !== undefined ? d.memory_percent : (d.memory !== undefined ? d.memory : 61.4)).toFixed(1);
-  const net = +(d.throughput_mbps !== undefined ? d.throughput_mbps : (d.throughput !== undefined ? d.throughput : 48.2)).toFixed(1);
-  const loss = +(d.packet_loss_pct !== undefined ? d.packet_loss_pct : (d.packet_loss !== undefined ? d.packet_loss : 0.02)).toFixed(3);
-  const procs = d.process_count || Math.floor(Math.random()*20+235);
+  cpuHistory = recent.map(r => Number(r.cpu !== undefined ? r.cpu : (r.cpu_percent !== undefined ? r.cpu_percent : 0)));
+  ramHistory = recent.map(r => Number(r.memory !== undefined ? r.memory : (r.memory_percent !== undefined ? r.memory_percent : 0)));
+  netHistory = recent.map(r => Number(r.throughput !== undefined ? r.throughput : (r.latency !== undefined ? r.latency : 0)));
+  lossHistory = recent.map(r => Number(r.packet_loss !== undefined ? r.packet_loss : (r.packet_loss_percent !== undefined ? r.packet_loss_percent : 0)));
+
+  const last = recent[recent.length - 1];
+  const cpu = +(cpuHistory[cpuHistory.length - 1] || 0).toFixed(1);
+  const ram = +(ramHistory[ramHistory.length - 1] || 0).toFixed(1);
+  const net = +(netHistory[netHistory.length - 1] || 0).toFixed(1);
+  const loss = +(lossHistory[lossHistory.length - 1] || 0).toFixed(2);
+  const procs = last.process_count || '--';
 
   // Update KPIs
   const kCpu = document.getElementById('kpiCpu'); if (kCpu) kCpu.innerHTML = `${cpu} <span>%</span>`;
@@ -584,31 +579,22 @@ function updateFromTelemetry(data) {
     cd.className = 'delta-pill ' + (cpu > 70 ? 'red' : cpu > 50 ? 'amber' : 'green');
   }
 
-  // Push to chart history
-  const now = new Date();
-  const lbl = `${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
-  cpuHistory.push(cpu); if (cpuHistory.length > MAX_POINTS) cpuHistory.shift();
-  ramHistory.push(ram); if (ramHistory.length > MAX_POINTS) ramHistory.shift();
-  netHistory.push(net); if (netHistory.length > MAX_POINTS) netHistory.shift();
-  lossHistory.push(loss); if (lossHistory.length > MAX_POINTS) lossHistory.shift();
-
   if (cpuRamChart) {
-    cpuRamChart.data.labels.push(lbl);
-    if (cpuRamChart.data.labels.length > MAX_POINTS) cpuRamChart.data.labels.shift();
+    cpuRamChart.data.labels = timeLabels;
     cpuRamChart.data.datasets[0].data = [...cpuHistory];
     cpuRamChart.data.datasets[1].data = [...ramHistory];
     cpuRamChart.update('none');
   }
 
   if (netChart) {
-    netChart.data.labels = (cpuRamChart ? cpuRamChart.data.labels : []).filter((_,i)=>i%4===0);
+    netChart.data.labels = timeLabels.filter((_,i)=>i%4===0);
     netChart.data.datasets[0].data = netHistory.filter((_,i)=>i%4===0);
     netChart.data.datasets[1].data = lossHistory.filter((_,i)=>i%4===0).map(v=>v*1000);
     netChart.update('none');
   }
 
   // Update payload preview
-  updatePayloadPreview(d, cpu, ram, net, loss);
+  updatePayloadPreview(last, cpu, ram, net, loss);
 }
 
 function updateFromOverview(data) {
@@ -619,28 +605,30 @@ function updateFromOverview(data) {
     const cidEl = document.getElementById('collectorIdDisplay');
     if (cidEl) cidEl.textContent = c.collector_id || 'COLL-001';
     const cStatEl = document.getElementById('collectorStatus');
-    if (cStatEl) cStatEl.textContent = c.status === 'Healthy' ? 'Collector Online' : (c.status || 'Collector Online');
+    if (cStatEl) cStatEl.textContent = (c.status === 'Healthy' || c.status === 'ONLINE') ? 'Collector Online' : (c.status || 'Collector Online');
   }
 }
 
 function updatePayloadPreview(d, cpu, ram, net, loss) {
-  const now = new Date().toISOString();
+  if (!d) return;
+  const now = d.event_time_utc || d.timestamp || new Date().toISOString();
+  const cid = d.collector_id || document.getElementById('collectorIdDisplay').textContent || 'COLL-AUTO';
   const payload = {
-    collector_id: document.getElementById('collectorIdDisplay').textContent,
+    collector_id: cid,
     tenant_id: currentTenant,
-    source_id_hash: 'sha256:' + 'a1b2c3d4e5f6'.substring(0,22) + '…',
+    source_id_hash: d.source_id_hash || 'sha256:' + (d.sha256 || 'a1b2c3d4e5f6').substring(0,22) + '…',
     event_time_utc: now,
-    region: 'us-east-1',
+    region: d.region || 'us-east-1',
     pii_scrubbed: true,
     data: {
-      cpu_percent: cpu || 42.8,
-      memory_percent: ram || 61.4,
-      latency_ms: +(Math.random()*5+12).toFixed(1),
-      throughput_mbps: net || 48.2,
-      packet_loss_pct: loss || 0.02
+      cpu_percent: cpu !== undefined ? cpu : 0.0,
+      memory_percent: ram !== undefined ? ram : 0.0,
+      latency_ms: +(net || 0.0).toFixed(1),
+      packet_loss_pct: +(loss || 0.0).toFixed(3)
     }
   };
-  document.getElementById('payloadPreview').textContent = JSON.stringify(payload, null, 2);
+  const prevEl = document.getElementById('payloadPreview');
+  if (prevEl) prevEl.textContent = JSON.stringify(payload, null, 2);
 }
 
 function updateTimestamp() { /* keeps live indicator fresh */ }

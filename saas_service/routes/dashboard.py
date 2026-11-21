@@ -248,7 +248,9 @@ def get_telemetry_series(
     for r in records:
         try:
             p_json = json.loads(r["payload_json"])
-            data = p_json.get("data", {})
+            data = p_json.get("data") or p_json.get("metrics") or {}
+            if isinstance(data, list) and len(data) > 0:
+                data = data[0]
             series.append({
                 "payload_id": r["payload_id"],
                 "collector_id": r["collector_id"],
@@ -256,11 +258,11 @@ def get_telemetry_series(
                 "region": r["region"],
                 "event_time_utc": r["event_time_utc"],
                 "is_out_of_order": bool(r["is_out_of_order"]),
-                "cpu": data.get("cpu", 0.0),
-                "memory": data.get("memory", 0.0),
-                "disk": data.get("disk", 0.0),
-                "latency": data.get("latency", 0.0),
-                "packet_loss": data.get("packet_loss", 0.0)
+                "cpu": float(data.get("cpu") if data.get("cpu") is not None else (data.get("cpu_percent") if data.get("cpu_percent") is not None else 0.0)),
+                "memory": float(data.get("memory") if data.get("memory") is not None else (data.get("memory_percent") if data.get("memory_percent") is not None else 0.0)),
+                "disk": float(data.get("disk") if data.get("disk") is not None else (data.get("disk_percent") if data.get("disk_percent") is not None else 0.0)),
+                "latency": float(data.get("latency") if data.get("latency") is not None else (data.get("latency_ms") if data.get("latency_ms") is not None else (data.get("network_latency_ms") if data.get("network_latency_ms") is not None else 0.0))),
+                "packet_loss": float(data.get("packet_loss") if data.get("packet_loss") is not None else (data.get("packet_loss_percent") if data.get("packet_loss_percent") is not None else 0.0))
             })
         except Exception:
             pass
