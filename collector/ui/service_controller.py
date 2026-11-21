@@ -79,8 +79,15 @@ class CollectorServiceController:
             logger.info(f"Collector service is already running (PID: {status['pid']}).")
             return True
 
-        collector_script = self.collector_dir / "collector.py"
-        python_exe = sys.executable
+        is_frozen = getattr(sys, 'frozen', False)
+        if is_frozen:
+            cmd = [sys.executable, "--service", "--interval", "5"]
+            working_dir = Path(sys.executable).parent
+        else:
+            collector_script = self.collector_dir / "collector.py"
+            python_exe = sys.executable
+            cmd = [python_exe, str(collector_script), "--daemon", "--interval", "5"]
+            working_dir = self.collector_dir
 
         # Flags for independent detached process on Windows
         DETACHED_PROCESS = 0x00000008
@@ -90,8 +97,8 @@ class CollectorServiceController:
         try:
             # Launch collector in background loop mode
             proc = subprocess.Popen(
-                [python_exe, str(collector_script), "--daemon", "--interval", "5"],
-                cwd=str(self.collector_dir),
+                cmd,
+                cwd=str(working_dir),
                 creationflags=flags,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,

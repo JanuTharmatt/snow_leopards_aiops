@@ -53,9 +53,31 @@ class AuthService:
     def authenticate_collector_credentials(self, collector_id: str, collector_secret: str) -> Dict[str, str]:
         """
         Validates collector_id and collector_secret.
+        Checks in-memory credentials first, with fallback to SQLite collectors table.
         Returns collector metadata if valid, else raises HTTP 401.
         """
         creds = self.credentials.get(collector_id)
+        if not creds or creds.get("collector_secret") != collector_secret:
+            # Fallback check against persistent SQLite collectors table
+            try:
+                from .storage import storage_service
+                with storage_service._get_connection() as conn:
+                    cur = conn.execute(
+                        "SELECT collector_id, tenant_id, collector_secret FROM collectors WHERE collector_id = ?",
+                        (collector_id,)
+                    )
+                    row = cur.fetchone()
+                    if row and row["collector_secret"] == collector_secret:
+                        creds = {
+                            "collector_secret": row["collector_secret"],
+                            "tenant_id": row["tenant_id"],
+                            "region": "us-east-1",
+                            "legacy_key": f"KEY-{collector_id}"
+                        }
+                        self.credentials[collector_id] = creds
+            except Exception:
+                pass
+
         if not creds or creds["collector_secret"] != collector_secret:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,

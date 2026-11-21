@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,39 +8,50 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    rel="stylesheet">
   <style>
     body {
       font-family: 'Plus Jakarta Sans', sans-serif;
       background: radial-gradient(circle at 10% 20%, rgba(127, 95, 227, 0.12) 0%, transparent 40%),
-                  radial-gradient(circle at 90% 80%, rgba(6, 182, 212, 0.10) 0%, transparent 40%),
-                  linear-gradient(135deg, #f8f9fe 0%, #edf0fa 50%, #e7ecf8 100%);
+        radial-gradient(circle at 90% 80%, rgba(6, 182, 212, 0.10) 0%, transparent 40%),
+        linear-gradient(135deg, #f8f9fe 0%, #edf0fa 50%, #e7ecf8 100%);
       min-height: 100vh;
     }
-    .mono { font-family: 'JetBrains Mono', monospace; }
+
+    .mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
     .card-pop {
       background: #ffffff;
       border: 1px solid rgba(220, 225, 245, 0.9);
       box-shadow: 0 20px 40px -15px rgba(107, 85, 163, 0.12), 0 0 0 1px rgba(255, 255, 255, 0.8) inset;
       transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     }
+
     .btn-pop {
       background: linear-gradient(135deg, #7f5fe3 0%, #6366f1 100%);
       box-shadow: 0 10px 20px -5px rgba(127, 95, 227, 0.38);
       transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     }
+
     .btn-pop:hover {
       transform: translateY(-2px);
       box-shadow: 0 16px 28px -6px rgba(127, 95, 227, 0.52);
     }
+
     .btn-pop:active {
       transform: translateY(0);
     }
+
     .input-pop {
       transition: all 0.2s ease;
       border: 1.5px solid #e2e8f8;
       background: #fbfbfe;
     }
+
     .input-pop:focus {
       outline: none;
       border-color: #7f5fe3;
@@ -49,138 +61,208 @@
     }
   </style>
 </head>
+
 <body class="flex items-center justify-center p-6 text-slate-800">
 
   <div class="w-full max-w-md">
-    
+
     <!-- Official Logo (Self-contained branding with no redundant duplicate text) -->
     <div class="text-center mb-6">
-      <div class="inline-block p-2 bg-white rounded-3xl shadow-xl shadow-indigo-500/10 border border-slate-100 transform hover:scale-105 transition-transform duration-300">
-        <img src="/static/images/snow_leopard_logo.jpg" alt="SNOW LEOPARDS" class="h-32 w-auto mx-auto object-contain rounded-2xl">
+      <div
+        class="inline-block p-2 bg-white rounded-3xl shadow-xl shadow-indigo-500/10 border border-slate-100 transform hover:scale-105 transition-transform duration-300">
+        <img src="/static/images/snow_leopard_logo.jpg" alt="SNOW LEOPARDS"
+          class="h-32 w-auto mx-auto object-contain rounded-2xl">
       </div>
     </div>
 
     <!-- Main Card -->
     <div class="card-pop rounded-3xl p-8">
-      
+
       <div class="flex items-center justify-between pb-6 mb-6 border-b border-slate-100">
         <div>
           <h2 class="text-base font-bold text-slate-900">Sign in to Console</h2>
           <p class="text-xs text-slate-500">Access enterprise fleet & AI telemetry</p>
         </div>
-        <span class="inline-flex items-center gap-1.5 text-[11px] mono font-semibold bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full border border-emerald-200">
+        <span
+          class="inline-flex items-center gap-1.5 text-[11px] mono font-semibold bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full border border-emerald-200">
           <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
           Fleet Online
         </span>
       </div>
 
-      <div id="loginError" class="hidden text-xs text-rose-600 bg-rose-50 p-3 rounded-xl border border-rose-200 font-semibold mb-4 text-center"></div>
+      <div id="loginError"
+        class="hidden text-xs text-rose-600 bg-rose-50 p-3 rounded-xl border border-rose-200 font-semibold mb-4 text-center">
+      </div>
 
-      <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-4">
-        
-        <!-- Tenant ID -->
-        <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Tenant Cluster ID</label>
-          <select id="tenantId" class="input-pop w-full text-xs font-medium text-slate-800 rounded-xl px-3.5 py-3 focus:outline-none">
-            <option value="TENANT-001">TENANT-001 (US Production East)</option>
-            <option value="TENANT-ALPHA">TENANT-ALPHA (EU Central Frankfurt)</option>
-          </select>
-        </div>
+      <form id="loginForm" onsubmit="handleUnifiedLogin(event)" class="space-y-4">
 
-        <!-- Collector / Admin ID -->
-        <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Collector / Operator ID</label>
-          <input type="text" id="collectorId" value="COLL-001" required
-                 class="input-pop w-full text-xs font-medium text-slate-800 rounded-xl px-3.5 py-3 focus:outline-none mono"
-                 placeholder="e.g. COLL-001">
-        </div>
-
-        <!-- Secret / Access Key -->
-        <div>
-          <div class="flex items-center justify-between mb-1.5">
-            <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Collector Secret / Key</label>
-            <a href="/forgot-password" class="text-[11px] text-indigo-600 font-semibold hover:underline">Forgot?</a>
+        <!-- Standard Unified Account Login (Email & Password) -->
+        <div id="emailPasswordFields" class="space-y-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Account / Judge
+              Email</label>
+            <input type="email" id="userEmail" required
+              class="input-pop w-full text-xs font-medium text-slate-800 rounded-xl px-3.5 py-3 focus:outline-none mono"
+              placeholder="name@company.com">
           </div>
-          <input type="password" id="collectorKey" value="SECRET-COLL-DEMO-001" required
-                 class="input-pop w-full text-xs font-medium text-slate-800 rounded-xl px-3.5 py-3 focus:outline-none mono"
-                 placeholder="Enter collector secret key">
+
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Password</label>
+              <a href="/forgot-password" class="text-[11px] text-indigo-600 font-semibold hover:underline">Forgot?</a>
+            </div>
+            <input type="password" id="userPassword" required minlength="6"
+              class="input-pop w-full text-xs font-medium text-slate-800 rounded-xl px-3.5 py-3 focus:outline-none mono"
+              placeholder="Enter your account password">
+          </div>
+        </div>
+
+        <!-- Advanced Legacy Collector Key Mode (Hidden by default) -->
+        <div id="collectorKeyFields" class="hidden space-y-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Tenant Cluster
+              ID</label>
+            <input type="text" id="tenantId" value="TENANT-001"
+              class="input-pop w-full text-xs font-medium text-slate-800 rounded-xl px-3.5 py-3 focus:outline-none mono">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Collector Node
+              ID</label>
+            <input type="text" id="collectorId" value="COLL-001"
+              class="input-pop w-full text-xs font-medium text-slate-800 rounded-xl px-3.5 py-3 focus:outline-none mono">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Collector Secret /
+              Key</label>
+            <input type="password" id="collectorKey" value="SECRET-COLL-DEMO-001"
+              class="input-pop w-full text-xs font-medium text-slate-800 rounded-xl px-3.5 py-3 focus:outline-none mono">
+          </div>
         </div>
 
         <!-- Primary Submit Button -->
         <div class="pt-2">
-          <button type="submit" class="btn-pop w-full text-white font-bold text-xs uppercase tracking-wider py-3.5 rounded-xl flex items-center justify-center gap-2">
-            <span>Launch Observability Console</span>
+          <button type="submit" id="submitBtn"
+            class="btn-pop w-full text-white font-bold text-xs uppercase tracking-wider py-3.5 rounded-xl flex items-center justify-center gap-2">
+            <span>Sign In to Console</span>
             <span>→</span>
           </button>
         </div>
 
       </form>
 
+      <!-- Toggle between Unified Account and Collector Key -->
+      <div class="mt-3 text-center">
+        <button type="button" onclick="toggleAuthMode()" id="authModeToggleBtn"
+          class="text-[11px] text-slate-500 hover:text-indigo-600 font-medium underline">
+          Advanced: Sign in with Collector Secret
+        </button>
+      </div>
+
       <!-- New Tenant Register Link -->
-      <div class="mt-4 text-center">
+      <div class="mt-4 pt-3 border-t border-slate-100 text-center">
         <p class="text-xs text-slate-500 font-medium">
-          New to SNOW LEOPARDS? 
-          <a href="/register" class="text-indigo-600 font-bold hover:underline ml-1">Register Organization</a>
+          New to SNOW LEOPARDS?
+          <a href="/register" class="text-indigo-600 font-bold hover:underline ml-1">Register Organization & Tenant</a>
         </p>
       </div>
 
       <!-- Evaluator Shortcut for Industry Judges & AI Experts -->
-      <div class="mt-4 pt-4 border-t border-slate-100">
-        <button onclick="instantDemoLogin()" class="w-full bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-semibold py-2.5 px-3 rounded-xl border border-slate-200 flex items-center justify-center gap-2 transition hover:-translate-y-0.5">
+      <div class="mt-4 pt-3 border-t border-slate-100">
+        <button onclick="instantDemoLogin()"
+          class="w-full bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-semibold py-2.5 px-3 rounded-xl border border-slate-200 flex items-center justify-center gap-2 transition hover:-translate-y-0.5">
           <span>⚡ Instant Evaluator Demo Access</span>
         </button>
-        <p class="text-[11px] text-slate-400 text-center mt-2 font-medium">Pre-fills valid credentials for live architectural review</p>
+        <p class="text-[11px] text-slate-400 text-center mt-2 font-medium">One-click live login as demo1@test.com (No
+          typing required)</p>
       </div>
 
     </div>
 
     <!-- Security & Evaluation Badges -->
     <div class="mt-6 flex flex-wrap items-center justify-center gap-2 text-[11px] mono text-slate-500">
+      <span class="bg-white/70 px-2.5 py-1 rounded-full border border-slate-200">Unified Multi-Tenant Auth</span>
+      <span>•</span>
       <span class="bg-white/70 px-2.5 py-1 rounded-full border border-slate-200">Zero-Trust Egress Verified</span>
       <span>•</span>
       <span class="bg-white/70 px-2.5 py-1 rounded-full border border-slate-200">Causal RCA Engine</span>
-      <span>•</span>
-      <span class="bg-white/70 px-2.5 py-1 rounded-full border border-slate-200">168-Slot Seasonal AI</span>
     </div>
 
   </div>
 
   <script>
-    async function handleLogin(e) {
+    let isCollectorKeyMode = false;
+
+    function toggleAuthMode() {
+      isCollectorKeyMode = !isCollectorKeyMode;
+      const emailFields = document.getElementById('emailPasswordFields');
+      const collFields = document.getElementById('collectorKeyFields');
+      const toggleBtn = document.getElementById('authModeToggleBtn');
+      const userEmail = document.getElementById('userEmail');
+      const userPassword = document.getElementById('userPassword');
+
+      if (isCollectorKeyMode) {
+        emailFields.classList.add('hidden');
+        collFields.classList.remove('hidden');
+        userEmail.removeAttribute('required');
+        userPassword.removeAttribute('required');
+        toggleBtn.textContent = "Switch back to Email & Password login";
+      } else {
+        emailFields.classList.remove('hidden');
+        collFields.classList.add('hidden');
+        userEmail.setAttribute('required', 'true');
+        userPassword.setAttribute('required', 'true');
+        toggleBtn.textContent = "Advanced: Sign in with Collector Secret";
+      }
+    }
+
+    async function handleUnifiedLogin(e) {
       if (e) e.preventDefault();
-      const tenant = document.getElementById('tenantId').value;
-      const collector = document.getElementById('collectorId').value;
-      const key = document.getElementById('collectorKey').value;
       const errorEl = document.getElementById('loginError');
+      const submitBtn = document.getElementById('submitBtn');
       if (errorEl) errorEl.classList.add('hidden');
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerText = "Authenticating...";
+      }
 
       try {
-        const resp = await fetch('/auth/token', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ collector_id: collector, collector_secret: key })
-        });
-        
-        if (!resp.ok) {
-          const errData = await resp.json().catch(() => ({}));
-          throw new Error(errData.detail || 'Authentication failed. Please verify credentials.');
+        if (isCollectorKeyMode) {
+          // Direct token authentication with collector_secret
+          const tenant = document.getElementById('tenantId').value.trim();
+          const collector = document.getElementById('collectorId').value.trim();
+          const key = document.getElementById('collectorKey').value.trim();
+
+          const resp = await fetch('/auth/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ collector_id: collector, collector_secret: key })
+          });
+
+          if (!resp.ok) {
+            const errData = await resp.json().catch(() => ({}));
+            throw new Error(errData.detail || 'Authentication failed. Please verify credentials.');
+          }
+
+          const data = await resp.json();
+          saveSessionAndRedirect(data.access_token, data.tenant_id || tenant, data.collector_id || collector);
+        } else {
+          // Standard Unified Account Login
+          const email = document.getElementById('userEmail').value.trim();
+          const password = document.getElementById('userPassword').value;
+
+          const resp = await fetch('/api/v1/auth/login-tenant', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: email, password: password })
+          });
+
+          const data = await resp.json().catch(() => ({}));
+          if (!resp.ok) {
+            throw new Error(data.detail || 'Invalid email or password.');
+          }
+
+          saveSessionAndRedirect(data.jwt || data.access_token, data.tenant_id, data.collector_id);
         }
-
-        const data = await resp.json();
-        sessionStorage.setItem('sl_token', data.access_token);
-        sessionStorage.setItem('sl_tenant', tenant);
-        sessionStorage.setItem('sl_collector', collector);
-        sessionStorage.setItem('snow_leopards_token', data.access_token);
-        sessionStorage.setItem('snow_leopards_tenant', tenant);
-        sessionStorage.setItem('snow_leopards_collector', collector);
-        localStorage.setItem('sl_token', data.access_token);
-        localStorage.setItem('sl_tenant', tenant);
-        localStorage.setItem('sl_collector', collector);
-        localStorage.setItem('snow_leopards_token', data.access_token);
-        localStorage.setItem('snow_leopards_tenant', tenant);
-        localStorage.setItem('snow_leopards_collector', collector);
-
-        window.location.href = `/dashboard?tenant_id=${encodeURIComponent(tenant)}&collector_id=${encodeURIComponent(collector)}`;
       } catch (err) {
         if (errorEl) {
           errorEl.textContent = err.message;
@@ -188,15 +270,38 @@
         } else {
           alert('Authentication Error: ' + err.message);
         }
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = `<span>Sign In to Console</span><span>→</span>`;
+        }
       }
     }
 
+    function saveSessionAndRedirect(token, tenant, collector) {
+      sessionStorage.setItem('sl_token', token);
+      sessionStorage.setItem('sl_tenant', tenant);
+      sessionStorage.setItem('sl_collector', collector || 'COL-PRIMARY');
+      sessionStorage.setItem('snow_leopards_token', token);
+      sessionStorage.setItem('snow_leopards_tenant', tenant);
+      sessionStorage.setItem('snow_leopards_collector', collector || 'COL-PRIMARY');
+
+      localStorage.setItem('sl_token', token);
+      localStorage.setItem('sl_tenant', tenant);
+      localStorage.setItem('sl_collector', collector || 'COL-PRIMARY');
+      localStorage.setItem('snow_leopards_token', token);
+      localStorage.setItem('snow_leopards_tenant', tenant);
+      localStorage.setItem('snow_leopards_collector', collector || 'COL-PRIMARY');
+
+      window.location.href = `/dashboard?tenant_id=${encodeURIComponent(tenant)}&collector_id=${encodeURIComponent(collector || 'COL-PRIMARY')}`;
+    }
+
     async function instantDemoLogin() {
-      document.getElementById('tenantId').value = "TENANT-001";
-      document.getElementById('collectorId').value = "COLL-001";
-      document.getElementById('collectorKey').value = "SECRET-COLL-DEMO-001";
-      await handleLogin(null);
+      if (isCollectorKeyMode) toggleAuthMode();
+      document.getElementById('userEmail').value = "demo1@test.com";
+      document.getElementById('userPassword').value = "DemoPassword2026!";
+      await handleUnifiedLogin(null);
     }
   </script>
 </body>
+
 </html>

@@ -43,6 +43,20 @@ class CollectorAuthClient:
         self.access_token: Optional[str] = None
         self.token_expires_at: float = 0.0
 
+    def reload_credentials(
+        self,
+        saas_url: Optional[str] = None,
+        collector_id: Optional[str] = None,
+        collector_secret: Optional[str] = None
+    ) -> None:
+        """Reloads credentials after interactive login or config update."""
+        self.saas_url = (saas_url or config.saas.saas_url).rstrip("/")
+        self.token_url = f"{self.saas_url}{self.token_endpoint}"
+        self.collector_id = collector_id or config.saas.collector_id
+        self.collector_secret = collector_secret or config.saas.collector_secret
+        self.access_token = None
+        self.token_expires_at = 0.0
+
     def is_token_expired(self, buffer_seconds: float = 15.0) -> bool:
         """Returns True if cached token is missing or near expiration."""
         if not self.access_token:

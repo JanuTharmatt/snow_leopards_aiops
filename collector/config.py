@@ -4,7 +4,7 @@ Provides settings for telemetry, security, local buffer, and SaaS transmission.
 """
 
 from pathlib import Path
-from typing import Dict, Optional, Pattern
+from typing import Any, Dict, Optional, Pattern
 import regex as re
 from pydantic import BaseModel, Field
 
@@ -108,4 +108,59 @@ class AppConfig(BaseModel):
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
 
 
+import json
+import os
+import sys
+
+def get_collector_config_path() -> Path:
+    """Returns persistent path to collector_config.json."""
+    if getattr(sys, 'frozen', False):
+        exe_dir = Path(sys.executable).parent
+        return exe_dir / "collector_config.json"
+    return BASE_DIR / "collector_config.json"
+
+
+def load_collector_config(target_config: 'AppConfig') -> bool:
+    """Loads stored tenant and collector credentials from collector_config.json."""
+    cfg_file = get_collector_config_path()
+    if not cfg_file.exists():
+        # Also check current working directory
+        cwd_file = Path.cwd() / "collector_config.json"
+        if cwd_file.exists():
+            cfg_file = cwd_file
+        else:
+            return False
+
+    try:
+        data = json.loads(cfg_file.read_text(encoding="utf-8"))
+        if data.get("saas_url"):
+            target_config.saas.saas_url = data["saas_url"]
+        if data.get("tenant_id"):
+            target_config.saas.tenant_id = data["tenant_id"]
+        if data.get("collector_id"):
+            target_config.saas.collector_id = data["collector_id"]
+        if data.get("collector_secret") or data.get("collector_registration_token"):
+            target_config.saas.collector_secret = data.get("collector_secret") or data.get("collector_registration_token")
+        if data.get("collector_key"):
+            target_config.saas.collector_key = data["collector_key"]
+        return True
+    except Exception:
+        return False
+
+
+def save_collector_config(data: Dict[str, Any]) -> Path:
+    """Saves provisioned tenant and collector credentials to collector_config.json."""
+    cfg_file = get_collector_config_path()
+    try:
+        cfg_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        return cfg_file
+    except Exception:
+        # Fallback to local cwd
+        cwd_file = Path.cwd() / "collector_config.json"
+        cwd_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        return cwd_file
+
+
 config = AppConfig()
+# Attempt auto-loading persisted credentials
+load_collector_config(config)

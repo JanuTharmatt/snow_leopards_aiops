@@ -22,11 +22,20 @@ except ImportError:
     CTK_AVAILABLE = False
 
 import psutil
+import socket
+import uuid
+import requests
 
 try:
-    from ..config import config
+    from ..config import config, save_collector_config, get_collector_config_path
+    from ..auth_client import auth_client
 except (ImportError, ValueError):
-    from config import config
+    try:
+        from collector.config import config, save_collector_config, get_collector_config_path
+        from collector.auth_client import auth_client
+    except (ImportError, ValueError):
+        from config import config, save_collector_config, get_collector_config_path
+        from auth_client import auth_client
 
 try:
     from .service_controller import service_controller
@@ -218,9 +227,232 @@ class CollectorControlCenterApp:
             self._render_settings_view()
 
     # -------------------------------------------------------------------------
-    # FEATURE 1: DASHBOARD VIEW
+    # FEATURE 1: DASHBOARD VIEW & ONBOARDING WIZARD
     # -------------------------------------------------------------------------
+    def _has_valid_credentials(self) -> bool:
+        """Checks if collector has provisioned credentials or config."""
+        cfg_path = get_collector_config_path()
+        return cfg_path.exists()
+
+    def _render_onboarding_view(self):
+        """Renders frictionless Onboarding & Cloud Login wizard card."""
+        self.header_title.configure(text="Cloud Onboarding & Node Registration")
+
+        card = ctk.CTkFrame(self.view_frame, corner_radius=12, fg_color="#1E293B")
+        card.pack(fill="x", padx=10, pady=10)
+
+        ctk.CTkLabel(
+            card,
+            text="🚀 Connect Node to Autonomous AIOps Cloud",
+            font=ctk.CTkFont(size=18, weight="bold"),
+            text_color="#60A5FA"
+        ).pack(anchor="w", padx=25, pady=(20, 5))
+
+        ctk.CTkLabel(
+            card,
+            text="One Account • One Tenant • One Login: Sign in with your unified credentials\nto automatically register this machine into your tenant fleet and start streaming telemetry.",
+            font=ctk.CTkFont(size=12),
+            text_color="#94A3B8",
+            justify="left"
+        ).pack(anchor="w", padx=25, pady=(0, 20))
+
+        # Status / Error banner
+        self.onboard_status_lbl = ctk.CTkLabel(
+            card,
+            text="",
+            font=ctk.CTkFont(size=12, weight="bold"),
+            text_color="#F87171"
+        )
+        self.onboard_status_lbl.pack(anchor="w", padx=25, pady=(0, 10))
+
+        # Form fields
+        form = ctk.CTkFrame(card, fg_color="transparent")
+        form.pack(fill="x", padx=25, pady=(0, 20))
+
+        # 1. SaaS Cloud URL
+        ctk.CTkLabel(form, text="SaaS Cloud Endpoint:", font=ctk.CTkFont(size=12, weight="bold")).grid(row=0, column=0, sticky="w", pady=6)
+        self.entry_saas_url = ctk.CTkEntry(form, width=420)
+        default_url = config.saas.saas_url if config.saas.saas_url and "localhost" not in config.saas.saas_url else "https://snow-leopards-aiops-cloud.onrender.com"
+        self.entry_saas_url.insert(0, default_url)
+        self.entry_saas_url.grid(row=0, column=1, sticky="w", padx=10, pady=6)
+
+        # 2. Email
+        ctk.CTkLabel(form, text="Account / Judge Email:", font=ctk.CTkFont(size=12, weight="bold")).grid(row=1, column=0, sticky="w", pady=6)
+        self.entry_email = ctk.CTkEntry(form, width=420, placeholder_text="name@domain.com")
+        self.entry_email.grid(row=1, column=1, sticky="w", padx=10, pady=6)
+
+        # 3. Password
+        ctk.CTkLabel(form, text="Password:", font=ctk.CTkFont(size=12, weight="bold")).grid(row=2, column=0, sticky="w", pady=6)
+        self.entry_password = ctk.CTkEntry(form, width=420, show="*")
+        self.entry_password.grid(row=2, column=1, sticky="w", padx=10, pady=6)
+
+        # 4. Optional Organization Name (for new signup)
+        ctk.CTkLabel(form, text="Org Name (New Signups):", font=ctk.CTkFont(size=12, weight="bold")).grid(row=3, column=0, sticky="w", pady=6)
+        self.entry_org = ctk.CTkEntry(form, width=420, placeholder_text="e.g. Judge Evaluation Team, Acme Corp")
+        self.entry_org.grid(row=3, column=1, sticky="w", padx=10, pady=6)
+
+        # Buttons Row
+        btn_frame = ctk.CTkFrame(card, fg_color="transparent")
+        btn_frame.pack(anchor="w", padx=25, pady=(0, 25))
+
+        self.btn_signin = ctk.CTkButton(
+            btn_frame,
+            text="🔐 Sign In & Connect",
+            fg_color="#3B82F6",
+            hover_color="#2563EB",
+            font=ctk.CTkFont(weight="bold"),
+            command=self._on_click_signin
+        )
+        self.btn_signin.pack(side="left", padx=(0, 10))
+
+        self.btn_register = ctk.CTkButton(
+            btn_frame,
+            text="✨ Create Organization & Connect",
+            fg_color="#6366F1",
+            hover_color="#4F46E5",
+            font=ctk.CTkFont(weight="bold"),
+            command=self._on_click_register
+        )
+        self.btn_register.pack(side="left", padx=10)
+
+        self.btn_demo = ctk.CTkButton(
+            btn_frame,
+            text="⚡ Instant Demo Access",
+            fg_color="#10B981",
+            hover_color="#059669",
+            command=self._on_click_instant_demo
+        )
+        self.btn_demo.pack(side="left", padx=10)
+
+    def _on_click_signin(self):
+        self._set_onboard_loading("Authenticating with Cloud...")
+        threading.Thread(target=self._perform_auth, args=("login",), daemon=True).start()
+
+    def _on_click_register(self):
+        self._set_onboard_loading("Creating Organization & Provisioning Tenant...")
+        threading.Thread(target=self._perform_auth, args=("register",), daemon=True).start()
+
+    def _on_click_instant_demo(self):
+        self.entry_email.delete(0, "end")
+        self.entry_email.insert(0, "demo1@test.com")
+        self.entry_password.delete(0, "end")
+        self.entry_password.insert(0, "DemoPassword2026!")
+        self._set_onboard_loading("Logging in with Demo Account...")
+        threading.Thread(target=self._perform_auth, args=("login",), daemon=True).start()
+
+    def _set_onboard_loading(self, message: str):
+        if hasattr(self, 'onboard_status_lbl'):
+            self.onboard_status_lbl.configure(text=f"⏳ {message}", text_color="#60A5FA")
+        if hasattr(self, 'btn_signin'):
+            self.btn_signin.configure(state="disabled")
+        if hasattr(self, 'btn_register'):
+            self.btn_register.configure(state="disabled")
+        if hasattr(self, 'btn_demo'):
+            self.btn_demo.configure(state="disabled")
+
+    def _perform_auth(self, mode: str):
+        """Background thread executing cloud authentication and collector registration."""
+        saas_url = self.entry_saas_url.get().strip().rstrip("/")
+        email = self.entry_email.get().strip()
+        password = self.entry_password.get().strip()
+        org_name = self.entry_org.get().strip() or f"Org-{email.split('@')[0]}"
+
+        if not email or "@" not in email:
+            self.root.after(0, lambda: self._on_auth_error("Please enter a valid email address."))
+            return
+        if not password or len(password) < 6:
+            self.root.after(0, lambda: self._on_auth_error("Password must be at least 6 characters."))
+            return
+
+        try:
+            # 1. Login or Register
+            if mode == "register":
+                reg_url = f"{saas_url}/api/v1/auth/register-tenant"
+                resp = requests.post(reg_url, json={"email": email, "password": password, "tenant_name": org_name}, timeout=12.0)
+                if not resp.ok:
+                    err_msg = resp.json().get("detail", "Registration failed.")
+                    self.root.after(0, lambda: self._on_auth_error(err_msg))
+                    return
+                auth_data = resp.json()
+            else:
+                login_url = f"{saas_url}/api/v1/auth/login-tenant"
+                resp = requests.post(login_url, json={"email": email, "password": password}, timeout=12.0)
+                if not resp.ok:
+                    err_msg = resp.json().get("detail", "Invalid email or password.")
+                    self.root.after(0, lambda: self._on_auth_error(err_msg))
+                    return
+                auth_data = resp.json()
+
+            tenant_id = auth_data["tenant_id"]
+            jwt_token = auth_data.get("jwt") or auth_data.get("access_token", "")
+
+            # 2. Register Collector Node on this Host
+            host_name = socket.gethostname()
+            reg_node_url = f"{saas_url}/api/v1/auth/register-collector"
+            node_resp = requests.post(reg_node_url, json={
+                "hostname": host_name,
+                "tenant_id": tenant_id,
+                "email": email,
+                "password": password
+            }, timeout=12.0)
+
+            if node_resp.ok:
+                node_data = node_resp.json()
+                collector_id = node_data.get("collector_id") or auth_data.get("collector_id") or f"COL-{uuid.uuid4().hex[:6].upper()}"
+                collector_secret = node_data.get("collector_secret") or auth_data.get("collector_secret") or auth_data.get("collector_registration_token", "")
+            else:
+                collector_id = auth_data.get("collector_id") or f"COL-{uuid.uuid4().hex[:6].upper()}"
+                collector_secret = auth_data.get("collector_secret") or auth_data.get("collector_registration_token", "")
+
+            # 3. Save to collector_config.json
+            saved_cfg = {
+                "saas_url": saas_url,
+                "email": email,
+                "tenant_id": tenant_id,
+                "collector_id": collector_id,
+                "collector_secret": collector_secret,
+                "collector_registration_token": collector_secret,
+                "jwt": jwt_token,
+                "registered_at": datetime.now(timezone.utc).isoformat()
+            }
+            save_collector_config(saved_cfg)
+
+            # 4. Update in-memory configurations
+            config.saas.saas_url = saas_url
+            config.saas.tenant_id = tenant_id
+            config.saas.collector_id = collector_id
+            config.saas.collector_secret = collector_secret
+            auth_client.reload_credentials(saas_url=saas_url, collector_id=collector_id, collector_secret=collector_secret)
+
+            # 5. Start background telemetry service
+            service_controller.start_service()
+
+            self.root.after(0, lambda: self._on_auth_success(saved_cfg))
+
+        except Exception as exc:
+            self.root.after(0, lambda: self._on_auth_error(f"Connection failed: {str(exc)}"))
+
+    def _on_auth_error(self, err_msg: str):
+        if hasattr(self, 'onboard_status_lbl'):
+            self.onboard_status_lbl.configure(text=f"❌ {err_msg}", text_color="#F87171")
+        if hasattr(self, 'btn_signin'):
+            self.btn_signin.configure(state="normal")
+        if hasattr(self, 'btn_register'):
+            self.btn_register.configure(state="normal")
+        if hasattr(self, 'btn_demo'):
+            self.btn_demo.configure(state="normal")
+
+    def _on_auth_success(self, data: Dict[str, Any]):
+        self.header_meta.configure(
+            text=f"Collector ID: {data['collector_id']}  |  Tenant: {data['tenant_id']}"
+        )
+        self.switch_tab("dashboard")
+
     def _render_dashboard_view(self):
+        # If not onboarded yet, show onboarding wizard
+        if not self._has_valid_credentials():
+            self._render_onboarding_view()
+            return
         # Quick Status Cards
         status_row = ctk.CTkFrame(self.view_frame, fg_color="transparent")
         status_row.pack(fill="x", pady=(0, 15))
@@ -492,6 +724,30 @@ class CollectorControlCenterApp:
             font=ctk.CTkFont(size=11),
             text_color="gray"
         ).pack(anchor="w", padx=20, pady=(0, 20))
+
+        # Cloud Tenant Management
+        ctk.CTkLabel(container, text="Cloud Tenant & Account Connection", font=ctk.CTkFont(size=14, weight="bold")).pack(anchor="w", padx=20, pady=(10, 5))
+        ctk.CTkLabel(container, text=f"• Active Tenant: {config.saas.tenant_id}\n• Collector ID:  {config.saas.collector_id}\n• SaaS Cloud:   {config.saas.saas_url}",
+                     font=ctk.CTkFont(family="Consolas", size=12), justify="left").pack(anchor="w", padx=20, pady=(0, 10))
+
+        ctk.CTkButton(
+            container,
+            text="🔌 Reconnect / Switch Tenant Account",
+            fg_color="#F59E0B",
+            hover_color="#D97706",
+            font=ctk.CTkFont(weight="bold"),
+            command=self._on_switch_account_click
+        ).pack(anchor="w", padx=20, pady=(0, 25))
+
+    def _on_switch_account_click(self):
+        """Resets saved collector_config.json and presents the onboarding wizard."""
+        cfg_file = get_collector_config_path()
+        if cfg_file.exists():
+            try:
+                cfg_file.unlink()
+            except Exception:
+                pass
+        self.switch_tab("dashboard")
 
     # -------------------------------------------------------------------------
     # BACKGROUND POLLER

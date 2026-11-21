@@ -20,11 +20,11 @@ if %errorlevel% neq 0 (
 )
 
 echo [SNOW LEOPARDS] Building dist/collector.exe with PyInstaller...
-pyinstaller --clean --noconfirm ^
+pyinstaller --noconfirm ^
     --onefile ^
     --name collector ^
     --distpath dist ^
-    --workpath build ^
+    --workpath build_pyi ^
     collector/collector_app.spec
 
 if %errorlevel% equ 0 (

@@ -2,26 +2,63 @@
 """
 PyInstaller Spec File for Privacy-First AIOps Collector Control Center.
 Produces a standalone single-file Windows executable: collector.exe
+
 Bundles:
+- Complete ui package (ui.app, ui.service_controller, ui.state_manager, ui.tray, ui.autostart)
+- Complete collector package (collector.collector, config, auth_client, buffer_manager, egress_worker, heartbeat_service)
 - CustomTkinter themes, fonts, and assets
 - Pystray system tray libraries
-- SQLite, psutil, ping3, requests, pydantic
-Runs without requiring a local Python installation on the target Windows host.
+- psutil, ping3, requests, pydantic, regex, sqlite3
+Guarantees execution on clean Windows installations without Python installed.
 """
 
+import os
 from pathlib import Path
 from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
 block_cipher = None
 
+# Base directories
+SPEC_DIR = Path(SPECPATH).resolve() if 'SPECPATH' in locals() else Path(__file__).resolve().parent
+ROOT_DIR = SPEC_DIR.parent if SPEC_DIR.name == "collector" else SPEC_DIR
+COLLECTOR_DIR = ROOT_DIR / "collector"
+
 # Collect CustomTkinter assets (themes, fonts, shapes)
 datas = collect_data_files('customtkinter')
+datas += [
+    (str(COLLECTOR_DIR / 'ui'), 'ui'),
+    (str(COLLECTOR_DIR / 'ui'), 'collector/ui'),
+    (str(COLLECTOR_DIR), 'collector'),
+]
 
-# Hidden imports required by dynamic GUI modules
+static_dir = ROOT_DIR / "saas_service" / "web" / "static"
+if static_dir.exists():
+    datas.append((str(static_dir), 'saas_service/web/static'))
+
+# Hidden imports required by dynamic GUI modules & background daemon
 hiddenimports = [
+    'ui',
+    'ui.app',
+    'ui.service_controller',
+    'ui.state_manager',
+    'ui.autostart',
+    'ui.tray',
+    'collector',
+    'collector.collector',
+    'collector.config',
+    'collector.auth_client',
+    'collector.payload_builder',
+    'collector.buffer_manager',
+    'collector.egress_worker',
+    'collector.heartbeat_service',
+    'collector.models',
+    'collector.security_pipeline',
+    'collector.metadata_engine',
     'customtkinter',
     'pystray',
     'PIL',
+    'PIL.Image',
+    'PIL.ImageDraw',
     'PIL._tkinter_finder',
     'darkdetect',
     'psutil',
@@ -31,12 +68,28 @@ hiddenimports = [
     'regex',
     'sqlite3',
     'winreg',
+    'socket',
+    'uuid',
+    'hashlib',
+    'hmac',
+    'json',
+    'urllib',
+    'urllib.parse',
+    'threading',
+    'logging',
+    'argparse',
 ]
+
 hiddenimports += collect_submodules('customtkinter')
+hiddenimports += collect_submodules('pystray')
+hiddenimports += collect_submodules('PIL')
+hiddenimports += collect_submodules('collector')
+
+entrypoint = str(ROOT_DIR / 'run_ui.py')
 
 a = Analysis(
-    ['run_ui.py'],
-    pathex=['.'],
+    [entrypoint],
+    pathex=[str(ROOT_DIR), str(COLLECTOR_DIR), str(COLLECTOR_DIR / 'ui')],
     binaries=[],
     datas=datas,
     hiddenimports=hiddenimports,
