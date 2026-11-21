@@ -1137,6 +1137,12 @@
             <div style="font-size:11.5px;color:#6E7485;font-weight:500;margin-top:4px;">
               Hash: <span class="mono" id="heroHash" style="color:#5B7CFA;font-size:10.5px;">sha256:...</span>
             </div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
+              <span style="font-size:11px;font-weight:700;color:#6E7485;">Target Machine:</span>
+              <select id="overviewDeviceSelect" onchange="onSelectOverviewDevice(this.value)" style="padding:4px 10px;border-radius:8px;border:1px solid #cbd5e1;font-size:11.5px;background:#fff;font-weight:700;color:#1e293b;cursor:pointer;">
+                <option value="all">🌐 All Devices (Aggregated Fleet)</option>
+              </select>
+            </div>
           </div>
           <div id="heroHealthBadge" class="health-badge healthy">
             <span class="health-dot"></span>
@@ -1174,6 +1180,12 @@
             <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#9BA3B5;">Region</div>
             <div style="font-size:13px;font-weight:800;color:#1A1D24;margin-top:4px;" id="heroRegion">us-east-1</div>
           </div>
+        </div>
+
+        <!-- Live Fleet Devices Bar -->
+        <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(220,225,245,0.7);">
+          <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#9BA3B5;margin-bottom:6px;">Connected Fleet Devices (Multi-Collector)</div>
+          <div id="overviewFleetStrip" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
         </div>
       </div>
 
@@ -1956,6 +1968,24 @@
 //  SNOW LEOPARDS — Dashboard JS (Phase 1–5 bound)
 // ═══════════════════════════════════════════════════════
 
+// ── State & Tenant Initialization ──
+const _initParams = new URLSearchParams(window.location.search);
+let currentTenant = _initParams.get('tenant_id') ||
+                    sessionStorage.getItem('sl_tenant') ||
+                    sessionStorage.getItem('snow_leopards_tenant') ||
+                    localStorage.getItem('sl_tenant') ||
+                    localStorage.getItem('snow_leopards_tenant') ||
+                    'TENANT-001';
+let activeCollectorId = 'all';
+let cachedCollectors = [];
+let currentWindow = '1m';
+let currentComparison = 'yesterday';
+let egressFilter = 'all';
+let egressProofs = [];
+let notifications = [];
+let refreshTimer = null;
+let activeTab = 'overview';
+
 // ── Auth Guard ──
 function enforceAuth() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -1970,6 +2000,7 @@ function enforceAuth() {
   if (qTenant) {
     sessionStorage.setItem('sl_tenant', qTenant);
     sessionStorage.setItem('snow_leopards_tenant', qTenant);
+    currentTenant = qTenant;
   }
   if (qColl) {
     sessionStorage.setItem('sl_collector', qColl);
@@ -2000,16 +2031,6 @@ function enforceAuth() {
   }
   return true;
 }
-
-// ── State ──
-let currentTenant = 'TENANT-001';
-let currentWindow = '1m';
-let currentComparison = 'yesterday';
-let egressFilter = 'all';
-let egressProofs = [];
-let notifications = [];
-let refreshTimer = null;
-let activeTab = 'overview';
 
 // Charts
 let lineChart = null;
@@ -2624,9 +2645,10 @@ async function executeCopilotQuery(query) {
 // ── Refresh All (Overview & Live Telemetry) ──
 async function refreshAll(silent = false) {
   const p = encodeURIComponent(currentTenant);
+  const collParam = (activeCollectorId && activeCollectorId !== 'all') ? `&collector_id=${encodeURIComponent(activeCollectorId)}` : '';
   const [overview, telemetry, egress, comparison, nodes] = await Promise.allSettled([
-    apiFetch(`/api/v1/dashboard/overview?tenant_id=${p}`),
-    apiFetch(`/api/v1/dashboard/telemetry?tenant_id=${p}`),
+    apiFetch(`/api/v1/dashboard/overview?tenant_id=${p}${collParam}`),
+    apiFetch(`/api/v1/dashboard/telemetry?tenant_id=${p}${collParam}`),
     apiFetch(`/api/v1/dashboard/egress-proofs?tenant_id=${p}`),
     apiFetch(`/api/v1/dashboard/comparison?tenant_id=${p}&window=${currentComparison}&metric=cpu_percent`),
     apiFetch(`/api/v1/dashboard/nodes?tenant_id=${p}`)
@@ -2654,9 +2676,15 @@ async function refreshAll(silent = false) {
   loadExecutiveSummary();
 }
 
+function onSelectOverviewDevice(val) {
+  activeCollectorId = val;
+  refreshAll();
+}
+
 function updateOverview(data) {
   if (!data) return;
   const collectors = Array.isArray(data.collectors) ? data.collectors : [];
+  cachedCollectors = collectors;
   const healthStates = data.health_states || {};
   const counts = {
     Healthy: healthStates.Healthy || 0,
@@ -2669,7 +2697,7 @@ function updateOverview(data) {
     collectors.forEach(c => {
       const s = c.status || 'Healthy';
       if (counts[s] !== undefined) counts[s]++;
-      else if (s === 'Active' || s === 'Online') counts.Healthy++;
+      else if (s === 'Active' || s === 'Online' || s === 'ONLINE') counts.Healthy++;
       else counts['Stale/Offline']++;
     });
   }
@@ -2688,6 +2716,53 @@ function updateOverview(data) {
   const sumText = document.getElementById('fleetSummaryText');
   if (sumText) sumText.textContent = `${total} node${total !== 1 ? 's' : ''}`;
 
+  const hTId = document.getElementById('heroTenantId');
+  if (hTId) hTId.textContent = currentTenant;
+
+  // Populate Device Dropdown
+  const devSelect = document.getElementById('overviewDeviceSelect');
+  if (devSelect) {
+    const currentVal = devSelect.value;
+    let opts = '<option value="all">🌐 All Devices (Aggregated Fleet)</option>';
+    collectors.forEach(c => {
+      const cId = c.collector_id || c.source_id_hash;
+      const name = c.device_name || c.hostname || cId;
+      const statusIcon = (c.status === 'ONLINE' || c.status === 'Active' || c.status === 'Healthy') ? '🟢' : '⚪';
+      opts += `<option value="${cId}">${statusIcon} ${name} (${cId})</option>`;
+    });
+    devSelect.innerHTML = opts;
+    if (activeCollectorId && Array.from(devSelect.options).some(o => o.value === activeCollectorId)) {
+      devSelect.value = activeCollectorId;
+    }
+  }
+
+  // Populate Overview Fleet Strip
+  const fleetStrip = document.getElementById('overviewFleetStrip');
+  if (fleetStrip) {
+    if (collectors.length === 0) {
+      fleetStrip.innerHTML = `<div style="font-size:11.5px;color:var(--text-muted);padding:4px 0;">Awaiting collector connections for ${currentTenant}…</div>`;
+    } else {
+      fleetStrip.innerHTML = collectors.map(c => {
+        const isOnline = (c.status === 'ONLINE' || c.status === 'Active' || c.status === 'Healthy');
+        const name = c.device_name || c.hostname || c.collector_id;
+        const statusColor = isOnline ? '#16A34A' : '#DC2626';
+        const dot = isOnline ? '●' : '○';
+        const cpu = c.cpu !== null && c.cpu !== undefined ? `${c.cpu}%` : '--';
+        const mem = c.memory !== null && c.memory !== undefined ? `${c.memory}%` : '--';
+        const isSelected = (activeCollectorId === c.collector_id);
+        return `
+          <div onclick="onSelectOverviewDevice('${c.collector_id}')" 
+               style="padding:6px 12px;border-radius:10px;background:${isSelected ? 'rgba(99,102,241,0.12)' : '#fff'};border:1px solid ${isSelected ? '#6366F1' : 'rgba(220,225,245,0.8)'};cursor:pointer;display:flex;align-items:center;gap:8px;font-size:11.5px;box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+            <span style="font-size:10px;color:${statusColor};font-weight:800;">${dot}</span>
+            <span style="font-weight:700;color:var(--text-primary);">${name}</span>
+            <span style="color:var(--text-muted);font-size:10.5px;">CPU: ${cpu}</span>
+            <span style="color:var(--text-muted);font-size:10.5px;">RAM: ${mem}</span>
+          </div>
+        `;
+      }).join('');
+    }
+  }
+
   const obBadge = document.getElementById('onboardingTenantBadge');
   if (obBadge) {
     if (collectors.length > 0) {
@@ -2702,24 +2777,28 @@ function updateOverview(data) {
   }
 
   if (collectors.length > 0) {
-    const c = collectors[0];
-    const status = c.status || (counts.Healthy > 0 ? 'Healthy' : 'Degraded');
+    let target = collectors[0];
+    if (activeCollectorId && activeCollectorId !== 'all') {
+      const found = collectors.find(x => x.collector_id === activeCollectorId);
+      if (found) target = found;
+    }
+    const status = target.status || (counts.Healthy > 0 ? 'Healthy' : 'Degraded');
     const badge = document.getElementById('heroHealthBadge');
     if (badge) {
-      badge.className = 'health-badge ' + (status === 'Stale/Offline' ? 'stale' : status === 'Critical' ? 'critical' : status === 'Degraded' ? 'degraded' : 'healthy');
+      badge.className = 'health-badge ' + (status === 'Stale/Offline' || status === 'OFFLINE' ? 'stale' : status === 'Critical' ? 'critical' : status === 'Degraded' ? 'degraded' : 'healthy');
     }
     const hText = document.getElementById('heroHealthText'); if (hText) hText.textContent = status;
     const hHash = document.getElementById('heroHash');
     if (hHash) {
-      const rawHash = c.source_id_hash || c.sha256 || 'a1b2c3d4e5f67890123456789abcdef0';
+      const rawHash = target.source_id_hash || target.sha256 || 'a1b2c3d4e5f67890123456789abcdef0';
       hHash.textContent = 'sha256:' + rawHash.substring(0, 16) + '…';
     }
     const hStat = document.getElementById('heroStatus');
     if (hStat) {
-      hStat.textContent = status === 'Healthy' ? 'Active' : status;
-      hStat.style.color = status === 'Healthy' ? '#22C55E' : status === 'Critical' ? '#EF4444' : '#F59E0B';
+      hStat.textContent = (status === 'Healthy' || status === 'ONLINE') ? 'Active' : status;
+      hStat.style.color = (status === 'Healthy' || status === 'ONLINE') ? '#22C55E' : status === 'Critical' ? '#EF4444' : '#F59E0B';
     }
-    const hReg = document.getElementById('heroRegion'); if (hReg) hReg.textContent = c.region || 'us-east-1';
+    const hReg = document.getElementById('heroRegion'); if (hReg) hReg.textContent = target.region || 'us-east-1';
   }
 
   // Update Anomaly Count
@@ -2914,9 +2993,11 @@ function clearNotifs() {
 }
 
 function startAutoRefresh() {
-  const intervals = { '1m': 10000, '5m': 30000, '15m': 60000 };
   if (refreshTimer) clearInterval(refreshTimer);
-  refreshTimer = setInterval(() => { refreshAll(true); }, intervals[currentWindow] || 10000);
+  refreshTimer = setInterval(() => {
+    refreshAll(true);
+    if (activeTab === 'fleet') loadFleetData();
+  }, 3500);
 }
 
 function setTimeWindow(el, w) {

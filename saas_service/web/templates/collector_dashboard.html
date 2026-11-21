@@ -392,6 +392,18 @@
 
 <script>
 // ═══════════════════ AUTH + INIT ═══════════════════
+const _initParams = new URLSearchParams(window.location.search);
+let currentTenant = _initParams.get('tenant_id') ||
+                    sessionStorage.getItem('sl_tenant') ||
+                    sessionStorage.getItem('snow_leopards_tenant') ||
+                    localStorage.getItem('sl_tenant') ||
+                    localStorage.getItem('snow_leopards_tenant') ||
+                    'TENANT-001';
+let cpuRamChart = null;
+let netChart = null;
+let cpuHistory = [], ramHistory = [], netHistory = [], lossHistory = [];
+const MAX_POINTS = 24;
+
 function enforceAuth() {
   const urlParams = new URLSearchParams(window.location.search);
   const qToken = urlParams.get('token');
@@ -405,6 +417,7 @@ function enforceAuth() {
   if (qTenant) {
     sessionStorage.setItem('sl_tenant', qTenant);
     sessionStorage.setItem('snow_leopards_tenant', qTenant);
+    currentTenant = qTenant;
   }
   if (qColl) {
     sessionStorage.setItem('sl_collector', qColl);
@@ -422,22 +435,16 @@ function enforceAuth() {
     sessionStorage.setItem('snow_leopards_token', token);
   }
 
-  currentTenant = tenant || 'TENANT-001';
+  currentTenant = tenant || currentTenant || 'TENANT-001';
   return true;
 }
-
-let currentTenant = 'TENANT-001';
-let cpuRamChart = null;
-let netChart = null;
-let cpuHistory = [], ramHistory = [], netHistory = [], lossHistory = [];
-const MAX_POINTS = 24;
 
 document.addEventListener('DOMContentLoaded', () => {
   if (!enforceAuth()) return;
   applyTenantUI();
   initCharts();
   refreshAll();
-  setInterval(refreshAll, 10000);
+  setInterval(refreshAll, 3500);
 });
 
 function applyTenantUI() {

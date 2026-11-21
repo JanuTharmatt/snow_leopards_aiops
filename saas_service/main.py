@@ -79,15 +79,16 @@ if __name__ == "__main__":
     ssl_key = certs_dir / "server.key"
     ssl_cert = certs_dir / "server.crt"
 
+    port = int(os.environ.get("PORT", 8000))
     if ssl_enabled and ssl_key.exists() and ssl_cert.exists():
-        print(f"[AIOps.SaaS] Starting with TLS / HTTPS enforcement on port 8000...")
+        print(f"[AIOps.SaaS] Starting with TLS / HTTPS enforcement on port {port}...")
         uvicorn.run(
             app,
             host="0.0.0.0",
-            port=8000,
+            port=port,
             ssl_keyfile=str(ssl_key),
             ssl_certfile=str(ssl_cert)
         )
     else:
-        print("[AIOps.SaaS] Starting on http://0.0.0.0:8000 (Set AIOPS_SSL_ENABLED=1 for HTTPS)...")
-        uvicorn.run(app, host="0.0.0.0", port=8000)
+        print(f"[AIOps.SaaS] Starting on http://0.0.0.0:{port} (Set AIOPS_SSL_ENABLED=1 for HTTPS)...")
+        uvicorn.run(app, host="0.0.0.0", port=port)

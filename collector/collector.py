@@ -210,10 +210,27 @@ class PipelineProcessor:
         return self.process_record(metrics)
 
     def start_loop(self, interval_seconds: Optional[int] = None, max_iterations: Optional[int] = None) -> None:
-        """Continuous collection loop."""
+        """Continuous collection loop with immediate real-time egress synchronization to SaaS."""
         interval = interval_seconds or config.telemetry.interval_seconds
         iteration = 0
         logger.info(f"Starting AIOps Collector loop (Interval: {interval}s)...")
+
+        # Lazy-load egress worker and heartbeat service for automatic transmission
+        egress = None
+        heartbeat = None
+        try:
+            from .egress_worker import EgressWorker
+            from .heartbeat_service import HeartbeatService
+            egress = EgressWorker(buffer=self.buffer, poll_interval=2.0)
+            heartbeat = HeartbeatService(interval_seconds=15)
+        except (ImportError, ValueError):
+            try:
+                from egress_worker import EgressWorker
+                from heartbeat_service import HeartbeatService
+                egress = EgressWorker(buffer=self.buffer, poll_interval=2.0)
+                heartbeat = HeartbeatService(interval_seconds=15)
+            except Exception as e:
+                logger.warning(f"Could not initialize egress worker: {e}")
 
         try:
             while True:
@@ -221,6 +238,22 @@ class PipelineProcessor:
                 logger.info(f"--- Cycle #{iteration} ---")
                 pid, payload, audit = self.run_collection_cycle()
                 logger.info(f"Buffered Payload {pid} (SHA-256: {payload.sha256[:12]}..., Status: PENDING)")
+
+                # Immediate real-time data synchronization to SaaS
+                if egress:
+                    try:
+                        sent_count = egress.process_pending_batch()
+                        if sent_count > 0:
+                            logger.info(f"Real-time sync: transmitted {sent_count} payload(s) to SaaS Cloud ({config.saas.saas_url})")
+                    except Exception as eg_err:
+                        logger.warning(f"Real-time transmission error (queued for replay): {eg_err}")
+
+                # Heartbeat delivery
+                if heartbeat and iteration % 3 == 0:
+                    try:
+                        heartbeat.send_heartbeat(status="ONLINE")
+                    except Exception:
+                        pass
 
                 if max_iterations and iteration >= max_iterations:
                     logger.info(f"Reached max iterations ({max_iterations}). Exiting loop.")

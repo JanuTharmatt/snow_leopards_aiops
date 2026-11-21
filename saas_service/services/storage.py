@@ -322,11 +322,27 @@ class SaaSStorageService:
                 # Keep collectors table updated with latest status and timestamp
                 conn.execute(
                     """
-                    UPDATE collectors
-                    SET status = 'ONLINE', last_seen = ?
-                    WHERE collector_id = ?
+                    INSERT INTO collectors (collector_id, tenant_id, hostname, device_name, status, last_seen, version, registered_at, collector_secret)
+                    VALUES (?, ?, ?, ?, 'ONLINE', ?, '1.0', ?, 'KEY-AUTO')
+                    ON CONFLICT(collector_id) DO UPDATE SET
+                        status = 'ONLINE',
+                        last_seen = excluded.last_seen
                     """,
-                    (event_time_utc, collector_id)
+                    (collector_id, tenant_id, collector_id, collector_id, event_time_utc, event_time_utc)
+                )
+
+                # Also update collector_registry
+                conn.execute(
+                    """
+                    INSERT INTO collector_registry (collector_id, tenant_id, region, version, last_seen, status, updated_at)
+                    VALUES (?, ?, ?, '1.0', ?, 'ONLINE', ?)
+                    ON CONFLICT(collector_id) DO UPDATE SET
+                        tenant_id = excluded.tenant_id,
+                        status = 'ONLINE',
+                        last_seen = excluded.last_seen,
+                        updated_at = excluded.updated_at
+                    """,
+                    (collector_id, tenant_id, region, event_time_utc, now_utc)
                 )
             except Exception:
                 pass
@@ -551,16 +567,67 @@ class SaaSStorageService:
                 return dict(row)
         return None
 
+    def register_collector(
+        self,
+        collector_id: str,
+        tenant_id: str,
+        region: str = "us-east-1",
+        public_key: str = "PK-AUTO",
+        os_info: str = "Windows",
+        version: str = "1.0.0"
+    ) -> None:
+        """Registers a collector machine into the central fleet registry."""
+        now_utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        with self._get_connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO collector_registry (collector_id, tenant_id, region, version, last_seen, status, updated_at)
+                VALUES (?, ?, ?, ?, ?, 'ONLINE', ?)
+                ON CONFLICT(collector_id) DO UPDATE SET
+                    tenant_id = excluded.tenant_id,
+                    region = excluded.region,
+                    version = excluded.version,
+                    last_seen = excluded.last_seen,
+                    status = 'ONLINE',
+                    updated_at = excluded.updated_at
+                """,
+                (collector_id, tenant_id, region, version, now_utc, now_utc)
+            )
+            conn.commit()
+
     def get_all_collectors(self, tenant_id: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Lists all registered collectors in fleet."""
+        """Lists all registered collectors in fleet with their latest device names, metrics, and health states."""
         with self._get_connection() as conn:
             if tenant_id:
                 cursor = conn.execute(
-                    "SELECT * FROM collector_registry WHERE tenant_id = ? ORDER BY collector_id ASC",
+                    """
+                    SELECT c.collector_id, c.tenant_id, c.hostname,
+                           COALESCE(c.device_name, c.hostname) as device_name,
+                           COALESCE(cr.status, c.status, 'ONLINE') as status,
+                           COALESCE(cr.version, c.version, '1.0.0') as version,
+                           COALESCE(c.last_seen, cr.last_seen, c.registered_at) as last_seen,
+                           COALESCE(cr.region, 'us-east-1') as region
+                    FROM collectors c
+                    LEFT JOIN collector_registry cr ON c.collector_id = cr.collector_id
+                    WHERE c.tenant_id = ?
+                    ORDER BY c.registered_at ASC
+                    """,
                     (tenant_id,)
                 )
             else:
-                cursor = conn.execute("SELECT * FROM collector_registry ORDER BY collector_id ASC")
+                cursor = conn.execute(
+                    """
+                    SELECT c.collector_id, c.tenant_id, c.hostname,
+                           COALESCE(c.device_name, c.hostname) as device_name,
+                           COALESCE(cr.status, c.status, 'ONLINE') as status,
+                           COALESCE(cr.version, c.version, '1.0.0') as version,
+                           COALESCE(c.last_seen, cr.last_seen, c.registered_at) as last_seen,
+                           COALESCE(cr.region, 'us-east-1') as region
+                    FROM collectors c
+                    LEFT JOIN collector_registry cr ON c.collector_id = cr.collector_id
+                    ORDER BY c.registered_at ASC
+                    """
+                )
             return [dict(r) for r in cursor.fetchall()]
 
     def store_alert(

@@ -88,6 +88,13 @@ class CollectorControlCenterApp:
         self.active_tab = "dashboard"
         self._poll_ui_data()
 
+        # If already onboarded, immediately start real-time telemetry streaming
+        if self._has_valid_credentials():
+            try:
+                service_controller.start_service()
+            except Exception as e:
+                logger.warning(f"Auto-start telemetry service: {e}")
+
         if start_minimized:
             self.minimize_to_tray()
 
@@ -288,10 +295,24 @@ class CollectorControlCenterApp:
         self.entry_saas_url.insert(0, default_url)
         self.entry_saas_url.grid(row=2, column=1, sticky="w", padx=10, pady=6)
 
+        # Quick Presets: Cloud vs Local
+        presets = ctk.CTkFrame(form, fg_color="transparent")
+        presets.grid(row=3, column=1, sticky="w", padx=10, pady=(0, 6))
+        ctk.CTkButton(
+            presets, text="🌐 Cloud (Render)", width=120, height=24, font=ctk.CTkFont(size=11),
+            fg_color="#4338CA", hover_color="#3730A3",
+            command=lambda: self._set_saas_url("https://snow-leopards-aiops-cloud.onrender.com")
+        ).pack(side="left", padx=(0, 8))
+        ctk.CTkButton(
+            presets, text="💻 Localhost:8000", width=120, height=24, font=ctk.CTkFont(size=11),
+            fg_color="#374151", hover_color="#1F2937",
+            command=lambda: self._set_saas_url("http://localhost:8000")
+        ).pack(side="left")
+
         # 4. Optional Organization Name (for new signup)
-        ctk.CTkLabel(form, text="Org Name (New Signups):", font=ctk.CTkFont(size=12, weight="bold")).grid(row=3, column=0, sticky="w", pady=6)
+        ctk.CTkLabel(form, text="Org Name (New Signups):", font=ctk.CTkFont(size=12, weight="bold")).grid(row=4, column=0, sticky="w", pady=6)
         self.entry_org = ctk.CTkEntry(form, width=420, placeholder_text="e.g. Judge Evaluation Team, Acme Corp")
-        self.entry_org.grid(row=3, column=1, sticky="w", padx=10, pady=6)
+        self.entry_org.grid(row=4, column=1, sticky="w", padx=10, pady=6)
 
         # Buttons Row
         btn_frame = ctk.CTkFrame(card, fg_color="transparent")
@@ -325,6 +346,11 @@ class CollectorControlCenterApp:
             command=self._on_click_instant_demo
         )
         self.btn_demo.pack(side="left", padx=10)
+
+    def _set_saas_url(self, url: str):
+        if hasattr(self, 'entry_saas_url'):
+            self.entry_saas_url.delete(0, "end")
+            self.entry_saas_url.insert(0, url)
 
     def _on_click_signin(self):
         self._set_onboard_loading("Authenticating with Cloud...")

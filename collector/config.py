@@ -8,7 +8,15 @@ from typing import Any, Dict, Optional, Pattern
 import regex as re
 from pydantic import BaseModel, Field
 
-BASE_DIR = Path(__file__).resolve().parent
+import sys
+import os
+
+def _resolve_base_dir() -> Path:
+    if getattr(sys, 'frozen', False):
+        return Path(sys.executable).resolve().parent
+    return Path(__file__).resolve().parent
+
+BASE_DIR = _resolve_base_dir()
 DEFAULT_DB_PATH = BASE_DIR / "database.db"
 DEFAULT_AUDIT_LOG_PATH = BASE_DIR / "local_audit.jsonl"
 
@@ -143,6 +151,15 @@ def load_collector_config(target_config: 'AppConfig') -> bool:
             target_config.saas.collector_secret = data.get("collector_secret") or data.get("collector_registration_token")
         if data.get("collector_key"):
             target_config.saas.collector_key = data["collector_key"]
+
+        # Environment variable overrides
+        if os.environ.get("SAAS_URL"):
+            target_config.saas.saas_url = os.environ["SAAS_URL"]
+        if os.environ.get("TENANT_ID"):
+            target_config.saas.tenant_id = os.environ["TENANT_ID"]
+        if os.environ.get("COLLECTOR_ID"):
+            target_config.saas.collector_id = os.environ["COLLECTOR_ID"]
+
         return True
     except Exception:
         return False
