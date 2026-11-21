@@ -24,11 +24,12 @@ if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
 from fastapi import HTTPException
+from fastapi.responses import FileResponse, RedirectResponse
 from saas_service.services.tenant_service import tenant_service
 from saas_service.services.storage import storage_service
 from saas_service.services.auth import auth_service
 from saas_service.routes.auth import register_new_tenant, login_tenant_user, register_collector_endpoint, RegisterTenantRequest, LoginTenantRequest, RegisterCollectorRequest
-from saas_service.routes.dashboard import get_dashboard_overview, check_tenant_access
+from saas_service.routes.dashboard import get_dashboard_overview, check_tenant_access, download_collector_binary
 from saas_service.routes.demo_lab import generate_demo_incident, IncidentGenerateRequest
 
 
@@ -185,6 +186,18 @@ class TestOnboardingAndMultiTenantIsolation(unittest.TestCase):
             authorization=f"Bearer {self.token_b}"
         )
         self.assertEqual(overview_b["active_threats_count"], 0)
+
+    def test_06_collector_download_endpoint(self):
+        """Step 6: Verify collector.exe is hosted and downloadable directly via SaaS endpoint."""
+        res = download_collector_binary()
+        if isinstance(res, FileResponse):
+            self.assertEqual(res.filename, "collector.exe")
+            self.assertTrue(Path(res.path).exists())
+            self.assertGreater(Path(res.path).stat().st_size, 1000000) # > 1 MB
+        elif isinstance(res, RedirectResponse):
+            self.assertIn("collector.exe", res.headers.get("location", ""))
+        else:
+            self.fail(f"Unexpected response type from download endpoint: {type(res)}")
 
 
 if __name__ == "__main__":

@@ -265,26 +265,28 @@ class CollectorControlCenterApp:
         )
         self.onboard_status_lbl.pack(anchor="w", padx=25, pady=(0, 10))
 
-        # Form fields
+        # Form fields: Email & Password first for immediate Frictionless Onboarding
         form = ctk.CTkFrame(card, fg_color="transparent")
         form.pack(fill="x", padx=25, pady=(0, 20))
 
-        # 1. SaaS Cloud URL
-        ctk.CTkLabel(form, text="SaaS Cloud Endpoint:", font=ctk.CTkFont(size=12, weight="bold")).grid(row=0, column=0, sticky="w", pady=6)
+        # 1. Email (Primary Focus)
+        ctk.CTkLabel(form, text="Account / Dashboard Email:", font=ctk.CTkFont(size=12, weight="bold")).grid(row=0, column=0, sticky="w", pady=6)
+        self.entry_email = ctk.CTkEntry(form, width=420, placeholder_text="Enter the email you registered on the SaaS Dashboard")
+        self.entry_email.grid(row=0, column=1, sticky="w", padx=10, pady=6)
+        self.entry_email.bind("<Return>", lambda e: self.entry_password.focus_set())
+
+        # 2. Password (Enter to Sign In)
+        ctk.CTkLabel(form, text="Password:", font=ctk.CTkFont(size=12, weight="bold")).grid(row=1, column=0, sticky="w", pady=6)
+        self.entry_password = ctk.CTkEntry(form, width=420, show="*", placeholder_text="Enter your account password")
+        self.entry_password.grid(row=1, column=1, sticky="w", padx=10, pady=6)
+        self.entry_password.bind("<Return>", lambda e: self._on_click_signin())
+
+        # 3. SaaS Cloud URL
+        ctk.CTkLabel(form, text="SaaS Cloud Endpoint:", font=ctk.CTkFont(size=12, weight="bold")).grid(row=2, column=0, sticky="w", pady=6)
         self.entry_saas_url = ctk.CTkEntry(form, width=420)
         default_url = config.saas.saas_url if config.saas.saas_url and "localhost" not in config.saas.saas_url else "https://snow-leopards-aiops-cloud.onrender.com"
         self.entry_saas_url.insert(0, default_url)
-        self.entry_saas_url.grid(row=0, column=1, sticky="w", padx=10, pady=6)
-
-        # 2. Email
-        ctk.CTkLabel(form, text="Account / Judge Email:", font=ctk.CTkFont(size=12, weight="bold")).grid(row=1, column=0, sticky="w", pady=6)
-        self.entry_email = ctk.CTkEntry(form, width=420, placeholder_text="name@domain.com")
-        self.entry_email.grid(row=1, column=1, sticky="w", padx=10, pady=6)
-
-        # 3. Password
-        ctk.CTkLabel(form, text="Password:", font=ctk.CTkFont(size=12, weight="bold")).grid(row=2, column=0, sticky="w", pady=6)
-        self.entry_password = ctk.CTkEntry(form, width=420, show="*")
-        self.entry_password.grid(row=2, column=1, sticky="w", padx=10, pady=6)
+        self.entry_saas_url.grid(row=2, column=1, sticky="w", padx=10, pady=6)
 
         # 4. Optional Organization Name (for new signup)
         ctk.CTkLabel(form, text="Org Name (New Signups):", font=ctk.CTkFont(size=12, weight="bold")).grid(row=3, column=0, sticky="w", pady=6)
@@ -297,7 +299,7 @@ class CollectorControlCenterApp:
 
         self.btn_signin = ctk.CTkButton(
             btn_frame,
-            text="🔐 Sign In & Connect",
+            text="🔐 Sign In & Start Telemetry",
             fg_color="#3B82F6",
             hover_color="#2563EB",
             font=ctk.CTkFont(weight="bold"),

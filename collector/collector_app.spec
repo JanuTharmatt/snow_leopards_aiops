@@ -28,12 +28,10 @@ datas = collect_data_files('customtkinter')
 datas += [
     (str(COLLECTOR_DIR / 'ui'), 'ui'),
     (str(COLLECTOR_DIR / 'ui'), 'collector/ui'),
-    (str(COLLECTOR_DIR), 'collector'),
 ]
-
-static_dir = ROOT_DIR / "saas_service" / "web" / "static"
-if static_dir.exists():
-    datas.append((str(static_dir), 'saas_service/web/static'))
+# Only bundle collector Python source files (explicitly avoids copying collector/venv)
+for py_file in COLLECTOR_DIR.glob('*.py'):
+    datas.append((str(py_file), 'collector'))
 
 # Hidden imports required by dynamic GUI modules & background daemon
 hiddenimports = [

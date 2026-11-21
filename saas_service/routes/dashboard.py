@@ -12,10 +12,11 @@ Endpoints:
 
 from datetime import datetime, timezone
 import json
+import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Header, HTTPException, Query, status
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
 
 try:
     from ..services.storage import storage_service
@@ -115,6 +116,46 @@ def get_collector_dashboard_ui():
     if template_path.exists():
         return HTMLResponse(content=template_path.read_text(encoding="utf-8"))
     return HTMLResponse("<h2>Collector Dashboard template not found</h2>", status_code=404)
+
+
+@router.get("/api/v1/download/collector")
+@router.get("/api/v1/download/collector.exe")
+@router.get("/download/collector")
+@router.get("/download/collector.exe")
+def download_collector_binary():
+    """
+    Hosts and serves the standalone Windows collector.exe binary for zero-install evaluation.
+    Directly satisfies Requirement 2 & 3: Host collector.exe through the SaaS platform.
+    """
+    project_root = Path(__file__).resolve().parent.parent.parent
+    candidate_paths = [
+        project_root / "saas_service" / "web" / "static" / "downloads" / "collector.exe",
+        project_root / "dist" / "collector.exe",
+        project_root / "collector" / "dist" / "collector.exe",
+    ]
+    env_path = os.environ.get("COLLECTOR_EXE_PATH")
+    if env_path:
+        candidate_paths.insert(0, Path(env_path))
+
+    for cand in candidate_paths:
+        if cand.is_file() and cand.stat().st_size > 0:
+            return FileResponse(
+                path=str(cand),
+                filename="collector.exe",
+                media_type="application/vnd.microsoft.portable-executable",
+                headers={
+                    "Content-Disposition": 'attachment; filename="collector.exe"',
+                    "Content-Length": str(cand.stat().st_size),
+                    "Cache-Control": "public, max-age=3600"
+                }
+            )
+
+    # Fallback if binary is hosted externally or during lightweight container deploy
+    fallback_url = os.environ.get(
+        "COLLECTOR_DOWNLOAD_URL",
+        "https://github.com/JanuTharmatt/snow_leopards_aiops/raw/main/saas_service/web/static/downloads/collector.exe"
+    )
+    return RedirectResponse(url=fallback_url, status_code=status.HTTP_302_FOUND)
 
 
 @router.get("/api/v1/dashboard/overview")
