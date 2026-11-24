@@ -3180,6 +3180,8 @@ window.addEventListener('DOMContentLoaded', () => {
     initCharts();
     refreshAll();
     startAutoRefresh();
+    const qTab = new URLSearchParams(window.location.search).get('tab');
+    if (qTab) switchDashboardTab(qTab);
   }
 });
 </script>
